@@ -1,0 +1,21 @@
+.appShell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+}
+
+.errorBoundary {
+  width: min(1180px, calc(100% - 40px));
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin-inline: auto;
+  padding: 64px 16px;
+}
+
+.errorTrace {
+  width: 100%;
+  overflow-x: auto;
+  padding: 16px;
+  border-radius: 8px;
+  background: #f5f3ed;
+}
