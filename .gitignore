@@ -1,7 +1,8 @@
-.DS_Store
-.env
-/node_modules/
-
-# React Router
+node_modules/
 /.react-router/
 /build/
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/
