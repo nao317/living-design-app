@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 const pages = [
   ["/", "飯塚で理想のリフォーム＆"],
   ["/search", "検索結果"],
+  ["/contact", "お問い合わせ"],
   ["/cases/1", "キッチンを中心にしたリノベーション"],
   ["/login", "ログイン"],
   ["/signup", "新規登録"],
@@ -65,3 +66,47 @@ for (const viewport of [
     }
   });
 }
+
+test("スマホではメニューが左、ブランドが右にあり、メニューを開ける", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+
+  const menuButton = page.getByRole("button", { name: "メニューを開く" });
+  const brand = page.getByRole("link", { name: "飯塚のリノベ ホーム" });
+  const menuBox = await menuButton.boundingBox();
+  const brandBox = await brand.boundingBox();
+
+  expect(menuBox).not.toBeNull();
+  expect(brandBox).not.toBeNull();
+  expect(menuBox!.x).toBeLessThan(brandBox!.x);
+
+  await menuButton.click();
+  await expect(page.getByRole("navigation", { name: "メインメニュー" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "施工事例を探す" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "メニューを閉じる" })).toHaveAttribute("aria-expanded", "true");
+});
+
+test("お問い合わせページは共通ヘッダーだけを使い、サイドバーを表示しない", async ({ page }) => {
+  await page.goto("/contact", { waitUntil: "domcontentloaded" });
+
+  await expect(page.getByRole("navigation", { name: "メインメニュー" })).toBeVisible();
+  await expect(page.locator("aside.sidebar")).toHaveCount(0);
+});
+
+test("ダッシュボードのサイドバーには固有の操作だけを表示する", async ({ page }) => {
+  await page.goto("/company", { waitUntil: "domcontentloaded" });
+
+  const sidebar = page.getByRole("complementary", { name: "企業メニュー" });
+  await expect(sidebar.getByRole("link", { name: "ダッシュボード" })).toBeVisible();
+  await expect(sidebar.getByRole("link", { name: "企業情報の編集" })).toBeVisible();
+  await expect(sidebar.getByRole("link", { name: "施工事例の追加" })).toBeVisible();
+  await expect(sidebar.getByRole("link", { name: "問い合わせ" })).toHaveCount(0);
+  await expect(sidebar.getByRole("link", { name: "飯塚のリノベ" })).toHaveCount(0);
+});
+
+test("Google OAuthボタンに公式Gロゴを表示する", async ({ page }) => {
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
+
+  const googleButton = page.getByRole("button", { name: "Googleで続ける" });
+  await expect(googleButton.locator('img[src="/google-g-logo.png"]')).toBeVisible();
+});

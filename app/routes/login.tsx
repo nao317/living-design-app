@@ -1,19 +1,23 @@
 import type { Route } from "./+types/login";
-import { data, redirect } from "react-router";
-import { z } from "zod";
 import { AuthPanel } from "../features/auth/auth-panel";
+import { handleAuthAction } from "../features/auth/auth.client";
+import { safeRedirectTo } from "../features/auth/redirect";
 
-const schema = z.object({
-  email: z.email(),
-  password: z.string().min(8),
-});
-
-export async function action({ request }: Route.ActionArgs) {
-  const result = schema.safeParse(Object.fromEntries(await request.formData()));
-  if (!result.success) return data({ error: "メールアドレスとパスワードを確認してください。" }, { status: 400 });
-  return redirect("/mypage");
+export function loader({ request }: Route.LoaderArgs) {
+  return { redirectTo: safeRedirectTo(new URL(request.url).searchParams.get("redirectTo")) };
 }
 
-export default function LoginRoute({ actionData }: Route.ComponentProps) {
-  return <AuthPanel mode="login" error={actionData?.error} />;
+export async function clientAction({ request }: Route.ClientActionArgs) {
+  return handleAuthAction(request, "login");
+}
+
+export default function LoginRoute({ loaderData, actionData }: Route.ComponentProps) {
+  return (
+    <AuthPanel
+      mode="login"
+      error={actionData?.error}
+      message={actionData?.message}
+      redirectTo={loaderData.redirectTo}
+    />
+  );
 }

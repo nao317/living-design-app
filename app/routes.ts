@@ -3,9 +3,11 @@ import { index, route, type RouteConfig } from "@react-router/dev/routes";
 export default [
   index("routes/home.tsx"),
   route("search", "routes/search.tsx"),
+  route("contact", "routes/contact.tsx"),
   route("cases/:caseId", "routes/case-detail.tsx"),
   route("login", "routes/login.tsx"),
   route("signup", "routes/signup.tsx"),
+  route("auth/callback", "routes/auth-callback.tsx"),
   route("mypage", "routes/mypage.tsx"),
   route("mypage/favorites", "routes/favorites.tsx"),
   route("company", "routes/company-dashboard.tsx"),

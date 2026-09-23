@@ -37,7 +37,7 @@ export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps)
               <div><dt>設立</dt><dd>{loaderData.company.founded}</dd></div>
             </dl>
             <a className="button button--secondary" href={loaderData.company.website}>ホームページ <ExternalLink size={14} /></a>
-            <button type="button" className="button button--primary">問い合わせる</button>
+            <Link className="button button--primary" to={"/contact?companyId=" + loaderData.company.id}>問い合わせる</Link>
           </section>
         </div>
       </article>
