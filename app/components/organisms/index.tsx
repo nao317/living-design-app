@@ -1,24 +1,65 @@
-import { Heart, Home, LogIn, Menu, PencilLine, Plus, Search, UserRound, X } from "lucide-react";
-import { Form, Link, NavLink } from "react-router";
-import { useState } from "react";
+import { Heart, Home, Menu, PencilLine, Plus, X } from "lucide-react";
+import { Form, Link, NavLink, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import type { CaseStudy } from "../../data/mock";
+import { getSupabaseBrowserClient, isSupabaseConfigured } from "../../lib/supabase.client";
 import { CaseCard, CaseListItem } from "../molecules";
 import { Button } from "../atoms";
 
 export function Header() {
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    const supabase = getSupabaseBrowserClient();
+    void supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  async function handleLogout() {
+    const supabase = getSupabaseBrowserClient();
+    await supabase.auth.signOut();
+    setOpen(false);
+    navigate("/", { replace: true });
+  }
+
   return (
     <header className="site-header">
       <div className="site-header__inner">
-        <Link to="/" className="brand"><Home size={25} fill="currentColor" /><span>飯塚のリノベ</span></Link>
-        <nav className={open ? "header-nav is-open" : "header-nav"}>
+        <Link to="/" className="brand" aria-label="飯塚のリノベ ホーム">
+          <Home size={25} fill="currentColor" />
+          <span>飯塚のリノベ</span>
+        </Link>
+        <nav id="site-navigation" className={open ? "header-nav is-open" : "header-nav"} aria-label="メインメニュー" onClick={() => setOpen(false)}>
           <Link to="/search">施工事例を探す</Link>
           <Link to="/companies/1">企業を探す</Link>
-          <Link to="/mypage/favorites">お問い合わせ</Link>
-          <Link to="/login" className="header-login">ログイン/会員登録</Link>
+          <Link to="/contact">お問い合わせ</Link>
+          {user ? (
+            <>
+              <Link to="/mypage">マイページ</Link>
+              <button type="button" className="header-login" onClick={handleLogout}>ログアウト</button>
+            </>
+          ) : (
+            <Link to="/login" className="header-login">ログイン/会員登録</Link>
+          )}
         </nav>
-        <button type="button" className="menu-button" onClick={() => setOpen((value) => !value)} aria-label="メニュー">
-          {open ? <X /> : <Menu />}
+        <button
+          type="button"
+          className="menu-button"
+          onClick={() => setOpen((value) => !value)}
+          aria-controls="site-navigation"
+          aria-expanded={open}
+          aria-label={open ? "メニューを閉じる" : "メニューを開く"}
+        >
+          {open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
         </button>
       </div>
     </header>
@@ -31,23 +72,19 @@ export function Sidebar({ type = "user" }: { type?: "user" | "company" }) {
         ["/company", "ダッシュボード", Home],
         ["/company/profile/edit", "企業情報の編集", PencilLine],
         ["/company/cases/new", "施工事例の追加", Plus],
-        ["/mypage/favorites", "問い合わせ", UserRound],
       ] as const
     : [
         ["/mypage", "ダッシュボード", Home],
         ["/mypage/favorites", "お気に入り", Heart],
-        ["/search", "探す", Search],
       ] as const;
 
   return (
-    <aside className="sidebar">
-      <Link to="/" className="sidebar__brand"><Home size={22} fill="currentColor" /><span>飯塚のリノベ</span></Link>
+    <aside className="sidebar" aria-label={type === "company" ? "企業メニュー" : "マイページメニュー"}>
       <nav>
         {links.map(([href, label, Icon]) => (
           <NavLink key={href} to={href} end><Icon size={16} />{label}</NavLink>
         ))}
       </nav>
-      <Link to="/login" className="sidebar__bottom"><LogIn size={16} />退会</Link>
     </aside>
   );
 }

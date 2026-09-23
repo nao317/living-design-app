@@ -34,6 +34,11 @@ npm run dev
 
 Your application will be available at `http://localhost:5173`.
 
+## Supabase setup
+
+Database, Email authentication, and Google OAuth setup are documented in [docs/supabase-setup.md](./docs/supabase-setup.md).
+Run [supabase/setup.sql](./supabase/setup.sql) in the Supabase SQL Editor before connecting the app.
+
 ## Building for Production
 
 Create a production build:

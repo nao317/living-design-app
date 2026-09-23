@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
-import { Header, Sidebar } from "../organisms";
+import { Sidebar } from "../organisms";
 
 export function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <div className="public-layout">
-      <Header />
       <main>{children}</main>
     </div>
   );
