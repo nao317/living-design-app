@@ -1,7 +1,7 @@
 import type { Route } from "./+types/case-detail";
 import { ArrowLeft, Building2 } from "lucide-react";
 import { Link } from "react-router";
-import { Button, Tag } from "../components/atoms";
+import { Tag } from "../components/atoms";
 import { FavoriteButton } from "../components/molecules";
 import { PublicLayout } from "../components/templates";
 import { cases, images } from "../data/mock";
@@ -43,7 +43,7 @@ export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
             <h2><Building2 size={18} />{item.company}</h2>
             <img src={images.office} alt={item.company} />
             <Link className="button button--secondary" to={"/companies/" + item.companyId}>企業情報を見る</Link>
-            <Button type="button">企業に問い合わせる</Button>
+            <Link className="button button--primary" to={"/contact?caseId=" + item.id}>企業に問い合わせる</Link>
           </aside>
         </div>
       </article>
