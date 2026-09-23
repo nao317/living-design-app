@@ -1,7 +1,7 @@
 import { redirect } from "react-router";
 import { z } from "zod";
 import { getSupabaseBrowserClient } from "../../lib/supabase.client";
-import { safeRedirectTo } from "./redirect";
+import { rememberAuthRedirectTo, safeRedirectTo } from "./redirect";
 
 const credentialsSchema = z.object({
   email: z.email(),
@@ -21,8 +21,8 @@ export async function handleAuthAction(request: Request, mode: "login" | "signup
     const supabase = getSupabaseBrowserClient();
 
     if (formData.get("intent") === "google") {
+      rememberAuthRedirectTo(redirectTo);
       const callback = new URL("/auth/callback", window.location.origin);
-      callback.searchParams.set("redirectTo", redirectTo);
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -48,8 +48,8 @@ export async function handleAuthAction(request: Request, mode: "login" | "signup
       throw redirect(redirectTo);
     }
 
+    rememberAuthRedirectTo(redirectTo);
     const callback = new URL("/auth/callback", window.location.origin);
-    callback.searchParams.set("redirectTo", redirectTo);
     const { data, error } = await supabase.auth.signUp({
       ...result.data,
       options: { emailRedirectTo: callback.toString() },
