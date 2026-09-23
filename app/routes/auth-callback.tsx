@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
-import { safeRedirectTo } from "../features/auth/redirect";
+import { resolveAuthCallbackRedirectTo } from "../features/auth/redirect";
 import { getSupabaseBrowserClient } from "../lib/supabase.client";
 
 export function meta() {
@@ -14,7 +14,7 @@ export default function AuthCallbackRoute() {
 
   useEffect(() => {
     let active = true;
-    const redirectTo = safeRedirectTo(searchParams.get("redirectTo"));
+    const redirectTo = resolveAuthCallbackRedirectTo(searchParams.get("redirectTo"));
 
     async function completeAuthentication() {
       try {

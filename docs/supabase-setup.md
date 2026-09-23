@@ -41,9 +41,11 @@ Supabase Dashboardの「Authentication > Providers > Email」でEmail Provider�
 3. Google側の「Authorized redirect URIs」にSupabase DashboardのGoogle Provider画面に表示されるcallback URLを追加します。通常は https://<project-ref>.supabase.co/auth/v1/callback です。
 4. Supabase Dashboardの「Authentication > Providers > Google」にClient IDとClient Secretを設定して有効化します。
 5. Supabase Dashboardの「Authentication > URL Configuration」で次を設定します。
-   - Site URL: 開発時は http://localhost:5173
-   - Redirect URLs: http://localhost:5173/auth/callback
-   - 本番URLの https://<your-domain>/auth/callback も追加
+   - Site URL: 本番では https://living-design-app.vercel.app
+   - Redirect URLs:
+     - https://living-design-app.vercel.app/auth/callback
+     - http://localhost:5173/auth/callback
+   - Vercel Preview Deploymentを使う場合は、必要に応じてPreview URLの `/auth/callback` も追加
 
 GoogleのClient SecretはSupabase Dashboardだけに保存し、.env やリポジトリには追加しません。
 
