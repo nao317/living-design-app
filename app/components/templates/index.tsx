@@ -9,7 +9,7 @@ export function PublicLayout({ children }: { children: ReactNode }) {
   );
 }
 
-export function DashboardLayout({ children, type = "user" }: { children: ReactNode; type?: "user" | "company" }) {
+export function DashboardLayout({ children, type = "user" }: { children: ReactNode; type?: "user" | "company" | "admin" }) {
   return (
     <div className="dashboard-shell">
       <Sidebar type={type} />

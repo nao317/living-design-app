@@ -1,8 +1,10 @@
 import { Building2, Heart, MapPin, Search } from "lucide-react";
 import { Form, Link } from "react-router";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "../atoms";
 import type { CaseStudy } from "../../data/mock";
+import { getAuthorizationContext } from "../../features/auth/authorization.client";
+import { isSupabaseConfigured } from "../../lib/supabase.client";
 
 export function SearchBar({ defaultValue = "" }: { defaultValue?: string }) {
   return (
@@ -31,6 +33,17 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 
 export function FavoriteButton({ compact = false }: { compact?: boolean }) {
   const [active, setActive] = useState(false);
+  const [canFavorite, setCanFavorite] = useState(true);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    void getAuthorizationContext().then((context) => {
+      setCanFavorite(context?.accountRole !== "COMPANY" && context?.accountRole !== "ADMIN");
+    }).catch(() => setCanFavorite(true));
+  }, []);
+
+  if (!canFavorite) return null;
+
   return (
     <button
       type="button"

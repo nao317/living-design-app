@@ -3,9 +3,23 @@ import { Avatar } from "../components/atoms";
 import { CaseGrid } from "../components/organisms";
 import { DashboardLayout } from "../components/templates";
 import { cases, company, members } from "../data/mock";
+import type { Route } from "./+types/company-dashboard";
+import { requireAuthorization } from "../features/auth/authorization.client";
+import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 
 export function loader() {
   return { company, cases, members };
+}
+
+export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
+  await requireAuthorization(request, { role: "COMPANY" });
+  return serverLoader();
+}
+
+clientLoader.hydrate = true as const;
+
+export function HydrateFallback() {
+  return <ProtectedRouteFallback />;
 }
 
 export default function CompanyDashboardRoute({ loaderData }: { loaderData: ReturnType<typeof loader> }) {

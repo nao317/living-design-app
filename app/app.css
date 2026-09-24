@@ -69,6 +69,9 @@ img {
 }
 
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   min-height: 64px;
   border-bottom: 1px solid #edf0ed;
   background: #fff;
