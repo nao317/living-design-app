@@ -459,6 +459,54 @@ exception when invalid_text_representation then
 end;
 $$;
 
+create or replace function public.create_construction_case(
+  target_company_id uuid,
+  case_title text,
+  case_summary text default '',
+  case_area text default '',
+  case_period text default '',
+  target_price_min integer default null,
+  target_price_max integer default null
+)
+returns uuid language plpgsql security definer set search_path = ''
+as $$
+declare
+  created_case_id uuid;
+begin
+  if auth.uid() is null then
+    raise exception 'authentication required';
+  end if;
+
+  if not public.has_company_role(
+    target_company_id,
+    array['OWNER', 'ADMIN', 'EDITOR']::public.company_member_role[]
+  ) and not public.is_platform_admin() then
+    raise exception 'company membership is required';
+  end if;
+
+  if target_price_min is not null and target_price_min < 0 then
+    raise exception 'minimum price must be positive';
+  end if;
+  if target_price_max is not null and target_price_max < 0 then
+    raise exception 'maximum price must be positive';
+  end if;
+  if target_price_min is not null and target_price_max is not null and target_price_min > target_price_max then
+    raise exception 'minimum price cannot exceed maximum price';
+  end if;
+
+  insert into public.construction_cases (
+    company_id, created_by, title, summary, area, construction_period,
+    price_min, price_max, status
+  ) values (
+    target_company_id, auth.uid(), trim(case_title), coalesce(case_summary, ''),
+    coalesce(case_area, ''), coalesce(case_period, ''),
+    target_price_min, target_price_max, 'DRAFT'
+  ) returning id into created_case_id;
+
+  return created_case_id;
+end;
+$$;
+
 revoke all on function public.is_company_member(uuid) from public;
 revoke all on function public.has_company_role(uuid, public.company_member_role[]) from public;
 revoke all on function public.shares_company_with(uuid) from public;
@@ -468,6 +516,7 @@ revoke all on function public.can_view_company(uuid) from public;
 revoke all on function public.can_view_case(uuid) from public;
 revoke all on function public.can_manage_case(uuid) from public;
 revoke all on function public.try_uuid(text) from public;
+revoke all on function public.create_construction_case(uuid, text, text, text, text, integer, integer) from public;
 revoke all on function public.set_account_role(uuid, public.account_role, uuid) from public;
 revoke all on function public.approve_company_application(uuid) from public;
 revoke all on function public.reject_company_application(uuid) from public;
@@ -482,6 +531,7 @@ grant execute on function public.can_view_case(uuid) to anon, authenticated;
 grant execute on function public.can_manage_case(uuid) to authenticated;
 grant execute on function public.try_uuid(text) to anon, authenticated;
 grant execute on function public.set_account_role(uuid, public.account_role, uuid) to authenticated;
+grant execute on function public.create_construction_case(uuid, text, text, text, text, integer, integer) to authenticated;
 grant execute on function public.approve_company_application(uuid) to authenticated;
 grant execute on function public.reject_company_application(uuid) to authenticated;
 
