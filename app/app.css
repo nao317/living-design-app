@@ -82,7 +82,7 @@ img {
   width: min(1040px, calc(100% - 40px));
   min-height: 64px;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   margin-inline: auto;
 }
 
@@ -99,6 +99,7 @@ img {
   display: flex;
   align-items: center;
   gap: 26px;
+  margin-left: auto;
   font-size: 12px;
   font-weight: 600;
 }
@@ -120,6 +121,10 @@ img {
   border: 0;
   background: transparent;
   color: var(--green-950);
+}
+
+.menu-backdrop {
+  display: none;
 }
 
 .button {
@@ -1279,35 +1284,71 @@ img {
 
 @media (max-width: 820px) {
   .header-nav {
-    position: absolute;
-    z-index: 20;
+    position: fixed;
+    z-index: 30;
     top: 64px;
-    right: auto;
-    left: 12px;
-    display: none;
-    width: 230px;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    width: min(320px, 88vw);
     align-items: stretch;
-    border: 1px solid var(--line);
+    align-content: start;
+    gap: 0;
+    margin-left: 0;
+    border-left: 1px solid var(--line);
     background: #fff;
-    box-shadow: var(--shadow);
-    padding: 14px;
+    box-shadow: -10px 0 28px rgb(25 53 31 / 14%);
+    padding: 22px 20px 28px;
+    overflow-y: auto;
+    transform: translateX(100%);
+    visibility: hidden;
+    transition: transform 220ms ease, visibility 220ms ease;
   }
 
   .header-nav.is-open {
-    display: grid;
+    transform: translateX(0);
+    visibility: visible;
+  }
+
+  .header-nav > a,
+  .header-nav > .header-login {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    border-bottom: 1px solid #edf0ed;
+    padding: 12px 4px;
+  }
+
+  .header-nav > a:last-child,
+  .header-nav > .header-login:last-child {
+    border-bottom: 0;
+  }
+
+  .menu-backdrop {
+    position: fixed;
+    z-index: 20;
+    inset: 64px 0 0;
+    display: block;
+    border: 0;
+    background: rgb(16 35 21 / 24%);
+    padding: 0;
   }
 
   .brand {
+    order: 1;
+    margin-left: 0;
+  }
+
+  .menu-button {
+    position: relative;
+    z-index: 40;
+    display: grid;
     order: 2;
     margin-left: auto;
   }
 
-  .menu-button {
-    display: grid;
-    order: 1;
-  }
-
   .header-nav .header-login {
+    display: flex;
     width: 100%;
     text-align: left;
   }
