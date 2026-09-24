@@ -62,7 +62,7 @@ export function Header() {
         </Link>
         <nav id="site-navigation" className={open ? "header-nav is-open" : "header-nav"} aria-label="メインメニュー" onClick={() => setOpen(false)}>
           <Link to="/search">施工事例を探す</Link>
-          <Link to="/companies/1">企業を探す</Link>
+          <Link to="/companies">企業を探す</Link>
           <Link to="/contact">お問い合わせ</Link>
           {user ? (
             <>

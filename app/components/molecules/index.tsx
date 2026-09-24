@@ -1,5 +1,5 @@
 import { Building2, Heart, MapPin, Search } from "lucide-react";
-import { Form, Link } from "react-router";
+import { Form, Link, useSearchParams } from "react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "../atoms";
 import type { CaseStudy } from "../../features/cases/types";
@@ -97,14 +97,26 @@ export function CaseListItem({ item }: { item: CaseStudy }) {
   );
 }
 
-export function Pagination() {
+export function Pagination({ totalItems, currentPage = 1, pageSize = 10 }: { totalItems: number; currentPage?: number; pageSize?: number }) {
+  const [searchParams] = useSearchParams();
+  const totalPages = Math.ceil(totalItems / pageSize);
+  if (totalPages <= 1) return null;
+
+  function getPageUrl(page: number) {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", String(page));
+    return `?${params.toString()}`;
+  }
+
   return (
     <nav className="pagination" aria-label="ページ送り">
-      <button type="button" disabled>‹</button>
-      <button type="button" className="is-current" aria-current="page">1</button>
-      <button type="button">2</button>
-      <button type="button">3</button>
-      <button type="button">›</button>
+      {currentPage > 1 ? <Link to={getPageUrl(currentPage - 1)} aria-label="前のページ">‹</Link> : <span aria-hidden="true">‹</span>}
+      {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+        page === currentPage
+          ? <span key={page} className="is-current" aria-current="page">{page}</span>
+          : <Link key={page} to={getPageUrl(page)}>{page}</Link>
+      ))}
+      {currentPage < totalPages ? <Link to={getPageUrl(currentPage + 1)} aria-label="次のページ">›</Link> : <span aria-hidden="true">›</span>}
     </nav>
   );
 }

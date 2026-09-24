@@ -1,6 +1,6 @@
 import { media } from "../../data/media";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../../lib/supabase.client";
-import type { CaseStudy, CompanyMember, CompanyProfile } from "./types";
+import type { CaseStudy, CompanyMember, CompanyProfile, CompanySummary } from "./types";
 
 type CaseRow = {
   id: string;
@@ -23,6 +23,8 @@ type CompanyRow = {
   website_url: string | null;
   description: string;
 };
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function formatPrice(row: CaseRow) {
   if (row.price_min === null && row.price_max === null) return "";
@@ -75,7 +77,7 @@ export async function fetchPublishedCases() {
 }
 
 export async function fetchCaseById(caseId: string) {
-  if (!isSupabaseConfigured()) return null;
+  if (!isSupabaseConfigured() || !uuidPattern.test(caseId)) return null;
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.from("construction_cases")
     .select("id, company_id, title, summary, area, price_min, price_max, construction_period")
@@ -87,7 +89,7 @@ export async function fetchCaseById(caseId: string) {
 }
 
 export async function fetchCompanyById(companyId: string) {
-  if (!isSupabaseConfigured()) return null;
+  if (!isSupabaseConfigured() || !uuidPattern.test(companyId)) return null;
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.from("companies")
     .select("id, name, address, phone, founded_year, business_hours, website_url, description")
@@ -115,6 +117,23 @@ export async function fetchCompanyById(companyId: string) {
     },
     cases: await fetchCasesByRows((caseRows ?? []) as CaseRow[]),
   };
+}
+
+export async function fetchPublishedCompanies(): Promise<CompanySummary[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.from("companies")
+    .select("id, name, address, description")
+    .eq("status", "PUBLISHED")
+    .order("name");
+  if (error) throw error;
+  return (data ?? []).map((company) => ({
+    id: company.id,
+    name: company.name,
+    address: company.address,
+    description: company.description,
+    image: media.office,
+  }));
 }
 
 export async function fetchFavoriteCases() {

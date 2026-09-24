@@ -6,6 +6,8 @@ import { searchParamsSchema } from "../features/search/schema";
 import { fetchPublishedCases } from "../features/cases/public-data.client";
 import type { CaseStudy } from "../features/cases/types";
 
+const pageSize = 10;
+
 export function meta() {
   return [{ title: "検索結果 | 飯塚のリノベ" }];
 }
@@ -23,7 +25,9 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
   const filtered = filters.q
     ? items.filter((item) => [item.title, item.company, item.area, ...item.categories].join(" ").includes(filters.q))
     : items;
-  return { ...serverData, items: filtered, filters, total: filtered.length };
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const page = Math.min(filters.page, totalPages);
+  return { ...serverData, items: filtered.slice((page - 1) * pageSize, page * pageSize), filters: { ...filters, page }, total: filtered.length };
 }
 
 clientLoader.hydrate = true as const;
@@ -43,7 +47,7 @@ export default function SearchRoute({ loaderData }: Route.ComponentProps) {
             {loaderData.items.length ? (
               <>
                 <CaseList items={loaderData.items} />
-                <Pagination />
+                <Pagination totalItems={loaderData.total} currentPage={loaderData.filters.page} pageSize={pageSize} />
               </>
             ) : (
               <div className="empty-state">
