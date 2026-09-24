@@ -3,6 +3,7 @@ export type CaseStudy = {
   title: string;
   company: string;
   companyId: string;
+  companyAddress?: string;
   image: string;
   area: string;
   price: string;

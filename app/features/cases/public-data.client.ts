@@ -36,12 +36,13 @@ function formatPrice(row: CaseRow) {
   return `${row.price_min}〜${row.price_max}`;
 }
 
-function toCaseStudy(row: CaseRow, company: Pick<CompanyRow, "id" | "name">, index: number): CaseStudy {
+function toCaseStudy(row: CaseRow, company: Pick<CompanyRow, "id" | "name" | "address">, index: number): CaseStudy {
   return {
     id: row.id,
     title: row.title,
     company: company.name,
     companyId: company.id,
+    companyAddress: company.address,
     image: [media.kitchen, media.living, media.house][index % 3],
     area: row.area,
     price: formatPrice(row),
@@ -56,7 +57,7 @@ async function fetchCasesByRows(rows: CaseRow[]) {
   const supabase = getSupabaseBrowserClient();
   const companyIds = [...new Set(rows.map((row) => row.company_id))];
   const { data, error } = await supabase.from("companies")
-    .select("id, name")
+    .select("id, name, address")
     .in("id", companyIds)
     .neq("status", "SUSPENDED");
   if (error) throw error;
