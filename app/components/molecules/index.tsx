@@ -77,7 +77,7 @@ export function CaseCard({ item }: { item: CaseStudy }) {
   return (
     <article className="case-card">
       <Link to={"/cases/" + item.id} className="case-card__image" aria-label={item.title + "の画像を見る"}>
-        <img src={item.image} alt={item.title} />
+        {item.image ? <img src={item.image} alt={item.title} /> : <span className="image-empty">画像未登録</span>}
       </Link>
       <div className="case-card__body">
         <h3><Link to={"/cases/" + item.id}>{item.title}</Link></h3>
@@ -95,7 +95,7 @@ export function CaseListItem({ item }: { item: CaseStudy }) {
   return (
     <article className="case-list-item">
       <Link to={"/cases/" + item.id} className="case-list-item__image">
-        <img src={item.image} alt={item.title} />
+        {item.image ? <img src={item.image} alt={item.title} /> : <span className="image-empty">画像未登録</span>}
       </Link>
       <div className="case-list-item__body">
         <h2>{item.title}</h2>

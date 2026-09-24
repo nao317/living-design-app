@@ -46,6 +46,7 @@ alter table public.profiles
 create table if not exists public.companies (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(name) between 1 and 120),
+  email text not null default '',
   description text not null default '',
   address text not null default '',
   phone text not null default '',
@@ -59,6 +60,9 @@ create table if not exists public.companies (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.companies
+  add column if not exists email text not null default '';
 
 create table if not exists public.company_members (
   company_id uuid not null references public.companies(id) on delete cascade,
@@ -344,9 +348,10 @@ begin
   end if;
 
   insert into public.companies (
-    name, description, address, phone, website_url, created_by, status
+    name, email, description, address, phone, website_url, created_by, status
   ) values (
     application_record.company_name,
+    coalesce((select email from auth.users where id = application_record.applicant_id), ''),
     application_record.description,
     application_record.address,
     application_record.phone,

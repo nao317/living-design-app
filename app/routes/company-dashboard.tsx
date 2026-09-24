@@ -37,7 +37,7 @@ export default function CompanyDashboardRoute({ loaderData }: { loaderData: Retu
           <h1>{loaderData.company.description}</h1>
           <Link className="button button--secondary" to="/company/profile/edit">企業情報を編集</Link>
         </div>
-        <img src={loaderData.company.image} alt={loaderData.company.name} />
+        {loaderData.company.image ? <img src={loaderData.company.image} alt={loaderData.company.name} /> : <div className="image-empty">企業画像未登録</div>}
       </header>
       <section className="dashboard-section">
         <div className="section-header"><h2>施工事例</h2><Link to="/company/cases/new">施工事例を追加</Link></div>

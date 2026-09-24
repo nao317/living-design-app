@@ -1,7 +1,6 @@
-import { media } from "../../data/media";
 import { getSignedImageUrl } from "../media/image-storage.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../../lib/supabase.client";
-import type { CaseStudy, CompanyMember, CompanyProfile, CompanySummary } from "./types";
+import type { CaseStudy, CompanyContactOption, CompanyMember, CompanyProfile, CompanySummary } from "./types";
 
 type CaseRow = {
   id: string;
@@ -17,6 +16,7 @@ type CaseRow = {
 type CompanyRow = {
   id: string;
   name: string;
+  email: string;
   address: string;
   phone: string;
   founded_year: number | null;
@@ -36,19 +36,37 @@ function formatPrice(row: CaseRow) {
   return `${row.price_min}〜${row.price_max}`;
 }
 
-function toCaseStudy(row: CaseRow, company: Pick<CompanyRow, "id" | "name" | "address">, index: number): CaseStudy {
+function parsePeriodMonths(value: string) {
+  const match = value.match(/\d+/);
+  return match ? Number(match[0]) : null;
+}
+
+function toCaseStudy(
+  row: CaseRow,
+  company: Pick<CompanyRow, "id" | "name" | "address">,
+  metadata: { categories?: Array<{ slug: string; name: string }>; styles?: Array<{ slug: string; name: string }>; companyImage?: string } = {},
+): CaseStudy {
+  const categories = metadata.categories ?? [];
+  const styles = metadata.styles ?? [];
   return {
     id: row.id,
     title: row.title,
     company: company.name,
     companyId: company.id,
     companyAddress: company.address,
-    image: [media.kitchen, media.living, media.house][index % 3],
+    companyImage: metadata.companyImage,
+    image: "",
     area: row.area,
     price: formatPrice(row),
     period: row.construction_period,
-    categories: [],
+    categories: categories.map((category) => category.name),
+    categorySlugs: categories.map((category) => category.slug),
+    styles: styles.map((style) => style.name),
+    styleSlugs: styles.map((style) => style.slug),
     summary: row.summary,
+    priceMin: row.price_min,
+    priceMax: row.price_max,
+    periodMonths: parsePeriodMonths(row.construction_period),
   };
 }
 
@@ -57,29 +75,60 @@ async function fetchCasesByRows(rows: CaseRow[]) {
   const supabase = getSupabaseBrowserClient();
   const companyIds = [...new Set(rows.map((row) => row.company_id))];
   const { data, error } = await supabase.from("companies")
-    .select("id, name, address")
+    .select("id, name, address, logo_path, cover_image_path")
     .in("id", companyIds)
     .neq("status", "SUSPENDED");
   if (error) throw error;
 
   const companies = new Map((data ?? []).map((company) => [company.id, company]));
-  const { data: imageRows, error: imageError } = await supabase.from("case_images")
-    .select("case_id, storage_path, display_order")
-    .in("case_id", rows.map((row) => row.id))
-    .order("display_order");
-  if (imageError) throw imageError;
+  const [imageResult, categoryResult, styleResult] = await Promise.all([
+    supabase.from("case_images")
+      .select("case_id, storage_path, display_order")
+      .in("case_id", rows.map((row) => row.id))
+      .order("display_order"),
+    supabase.from("case_categories")
+      .select("case_id, categories(slug, name)")
+      .in("case_id", rows.map((row) => row.id)),
+    supabase.from("case_styles")
+      .select("case_id, styles(slug, name)")
+      .in("case_id", rows.map((row) => row.id)),
+  ]);
+  if (imageResult.error) throw imageResult.error;
+  if (categoryResult.error) throw categoryResult.error;
+  if (styleResult.error) throw styleResult.error;
   const imageUrls = new Map<string, string[]>();
-  for (const image of imageRows ?? []) {
+  for (const image of imageResult.data ?? []) {
     const url = await getSignedImageUrl("case-images", image.storage_path);
     if (url) imageUrls.set(image.case_id, [...(imageUrls.get(image.case_id) ?? []), url]);
   }
-  return rows.flatMap((row, index) => {
+  const categories = new Map<string, Array<{ slug: string; name: string }>>();
+  for (const row of categoryResult.data ?? []) {
+    const relation = Array.isArray(row.categories) ? row.categories[0] : row.categories;
+    if (relation) categories.set(row.case_id, [...(categories.get(row.case_id) ?? []), relation]);
+  }
+  const styles = new Map<string, Array<{ slug: string; name: string }>>();
+  for (const row of styleResult.data ?? []) {
+    const relation = Array.isArray(row.styles) ? row.styles[0] : row.styles;
+    if (relation) styles.set(row.case_id, [...(styles.get(row.case_id) ?? []), relation]);
+  }
+  const result: CaseStudy[] = [];
+  for (const row of rows) {
     const company = companies.get(row.company_id);
-    if (!company) return [];
-    const item = toCaseStudy(row, company, index);
+    if (!company) continue;
     const images = imageUrls.get(row.id) ?? [];
-    return [{ ...item, image: images[0] ?? item.image, images: images.length ? images : undefined }];
-  });
+    const companyImage = await getSignedImageUrl("company-assets", company.cover_image_path ?? company.logo_path);
+    const item = toCaseStudy(row, company, {
+      categories: categories.get(row.id),
+      styles: styles.get(row.id),
+      companyImage: companyImage ?? undefined,
+    });
+    result.push({
+      ...item,
+      image: images[0] ?? "",
+      ...(images.length ? { images } : {}),
+    });
+  }
+  return result;
 }
 
 export async function fetchPublishedCases() {
@@ -109,7 +158,7 @@ export async function fetchCompanyById(companyId: string) {
   if (!isSupabaseConfigured() || !uuidPattern.test(companyId)) return null;
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.from("companies")
-    .select("id, name, address, phone, founded_year, business_hours, website_url, description, logo_path, cover_image_path")
+    .select("id, name, email, address, phone, founded_year, business_hours, website_url, description, logo_path, cover_image_path")
     .eq("id", companyId)
     .neq("status", "SUSPENDED")
     .maybeSingle();
@@ -127,10 +176,11 @@ export async function fetchCompanyById(companyId: string) {
   return {
     company: {
       ...company,
+      email: company.email,
       founded: company.founded_year ? `${company.founded_year}年` : "",
       website: company.website_url ?? "",
       businessHours: company.business_hours,
-      image: companyImage ?? media.office,
+      image: companyImage ?? "",
       logoImage: await getSignedImageUrl("company-assets", company.logo_path),
       coverImage: companyImage ?? undefined,
       features: [],
@@ -152,7 +202,7 @@ export async function fetchPublishedCompanies(): Promise<CompanySummary[]> {
     name: company.name,
     address: company.address,
     description: company.description,
-    image: await getSignedImageUrl("company-assets", company.cover_image_path ?? company.logo_path) ?? media.office,
+    image: await getSignedImageUrl("company-assets", company.cover_image_path ?? company.logo_path) ?? "",
   })));
 }
 
@@ -175,7 +225,7 @@ export async function fetchManagedCompany(companyId: string) {
   if (!isSupabaseConfigured()) return null;
   const supabase = getSupabaseBrowserClient();
   const [{ data: company, error: companyError }, { data: caseRows, error: casesError }, { data: memberRows, error: membersError }] = await Promise.all([
-    supabase.from("companies").select("id, name, address, phone, founded_year, business_hours, website_url, description, logo_path, cover_image_path").eq("id", companyId).maybeSingle(),
+    supabase.from("companies").select("id, name, email, address, phone, founded_year, business_hours, website_url, description, logo_path, cover_image_path").eq("id", companyId).maybeSingle(),
     supabase.from("construction_cases").select("id, company_id, title, summary, area, price_min, price_max, construction_period").eq("company_id", companyId).order("updated_at", { ascending: false }),
     supabase.from("company_members").select("user_id, role").eq("company_id", companyId),
   ]);
@@ -194,10 +244,11 @@ export async function fetchManagedCompany(companyId: string) {
   const companyRow = company as CompanyRow;
   const profile: CompanyProfile = {
     ...companyRow,
+    email: companyRow.email,
     founded: companyRow.founded_year ? `${companyRow.founded_year}年` : "",
     website: companyRow.website_url ?? "",
     businessHours: companyRow.business_hours,
-    image: await getSignedImageUrl("company-assets", companyRow.cover_image_path ?? companyRow.logo_path) ?? media.office,
+    image: await getSignedImageUrl("company-assets", companyRow.cover_image_path ?? companyRow.logo_path) ?? "",
     logoImage: (await getSignedImageUrl("company-assets", companyRow.logo_path)) ?? undefined,
     coverImage: (await getSignedImageUrl("company-assets", companyRow.cover_image_path)) ?? undefined,
     features: [],
@@ -225,11 +276,26 @@ export async function fetchManagedCompany(companyId: string) {
 
   return {
     company: profile,
-    cases: managedRows.map((row, index) => {
-      const item = toCaseStudy(row, companyRow, index);
+    cases: managedRows.map((row) => {
+      const item = toCaseStudy(row, companyRow, { companyImage: profile.image || undefined });
       const images = caseImageUrls.get(row.id) ?? [];
       return { ...item, image: images[0] ?? item.image, images: images.length ? images : undefined };
     }),
     members: memberList,
   };
+}
+
+export async function fetchPublishedCompanyContacts(): Promise<CompanyContactOption[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = getSupabaseBrowserClient();
+  const { data, error } = await supabase.from("companies")
+    .select("id, name, email")
+    .neq("status", "SUSPENDED")
+    .order("name");
+  if (error) throw error;
+  return (data ?? []).map((company) => ({
+    id: company.id,
+    name: company.name,
+    hasEmail: typeof company.email === "string" && company.email.trim().length > 0,
+  }));
 }
