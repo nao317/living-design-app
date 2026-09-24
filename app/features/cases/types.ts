@@ -9,6 +9,7 @@ export type CaseStudy = {
   period: string;
   categories: string[];
   summary: string;
+  images?: string[];
 };
 
 export type CompanyProfile = {
@@ -22,6 +23,8 @@ export type CompanyProfile = {
   description: string;
   image: string;
   features: string[];
+  logoImage?: string;
+  coverImage?: string;
 };
 
 export type CompanySummary = Pick<CompanyProfile, "id" | "name" | "address" | "description" | "image">;

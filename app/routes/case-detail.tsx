@@ -23,18 +23,19 @@ clientLoader.hydrate = true as const;
 export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
   if (!loaderData.item) return <PublicLayout><div className="public-page empty-state"><h1>施工事例が見つかりません</h1></div></PublicLayout>;
   const { item } = loaderData;
+  const gallery = item.images?.length ? item.images : [item.image];
   return (
     <PublicLayout>
       <article className="public-page case-detail-page">
         <Link to="/search" className="back-link"><ArrowLeft size={16} />検索結果へ戻る</Link>
         <div className="before-after">
           <figure><figcaption>AFTER</figcaption><img src={item.image} alt="施工後" /></figure>
-          <figure><figcaption>BEFORE</figcaption><img src={media.kitchenBefore} alt="施工前" /></figure>
+          <figure><figcaption>BEFORE</figcaption><img src={gallery[1] ?? media.kitchenBefore} alt="施工前" /></figure>
         </div>
         <div className="case-detail-layout">
           <aside className="detail-thumbnails">
-            <img src={media.living} alt="施工箇所" />
-            <img src={media.house} alt="建物外観" />
+            {gallery.slice(2).map((image, index) => <img key={image} src={image} alt={`施工写真${index + 3}`} />)}
+            {!gallery[2] ? <><img src={media.living} alt="施工箇所" /><img src={media.house} alt="建物外観" /></> : null}
           </aside>
           <main className="case-detail-main">
             <div className="case-detail-title">

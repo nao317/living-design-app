@@ -1,5 +1,5 @@
 import type { Route } from "./+types/company-profile-edit";
-import { Camera, Plus } from "lucide-react";
+import { Camera, Plus, Trash2 } from "lucide-react";
 import { data, Form } from "react-router";
 import { z } from "zod";
 import { Button, Tag } from "../components/atoms";
@@ -10,6 +10,7 @@ import { ProtectedRouteFallback } from "../features/auth/protected-route-fallbac
 import { getAuthorizationContext } from "../features/auth/authorization.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 import type { CompanyProfile } from "../features/cases/types";
+import { getSignedImageUrl, isImageFile, removeImages, uploadImage } from "../features/media/image-storage.client";
 
 const profileSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -27,16 +28,47 @@ export function loader() {
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   await requireAuthorization(request, { role: "COMPANY", companyRoles: ["OWNER", "ADMIN"] });
-  const result = profileSchema.safeParse(Object.fromEntries(await request.formData()));
+  const formData = await request.formData();
+  const result = profileSchema.safeParse(Object.fromEntries(formData));
   if (!result.success) return data({ error: "入力内容を確認してください。" }, { status: 400 });
 
   if (isSupabaseConfigured()) {
     const context = await getAuthorizationContext();
     const companyId = context?.memberships[0]?.companyId;
     if (companyId) {
-      const foundedYear = result.data.founded.replace(/[^0-9]/g, "");
-      const supabase = getSupabaseBrowserClient();
-      const { error } = await supabase.from("companies").update({
+    const foundedYear = result.data.founded.replace(/[^0-9]/g, "");
+    const supabase = getSupabaseBrowserClient();
+    const { data: currentCompany, error: currentCompanyError } = await supabase.from("companies")
+      .select("logo_path, cover_image_path")
+      .eq("id", companyId)
+      .maybeSingle();
+    if (currentCompanyError) return data({ error: "現在の企業情報を取得できませんでした。" }, { status: 400 });
+
+    const uploadedPaths: string[] = [];
+    const coverFile = formData.get("coverImage");
+    const logoFile = formData.get("logoImage");
+    let coverPath = currentCompany?.cover_image_path ?? null;
+    let logoPath = currentCompany?.logo_path ?? null;
+
+    for (const [file, directory, target] of [
+      [coverFile, `${companyId}/cover`, "cover"] as const,
+      [logoFile, `${companyId}/logo`, "logo"] as const,
+    ]) {
+      if (!isImageFile(file)) continue;
+      const uploaded = await uploadImage("company-assets", directory, file, 5 * 1024 * 1024);
+      if (uploaded.error || !uploaded.path) {
+        await removeImages("company-assets", uploadedPaths);
+        return data({ error: uploaded.error ?? "画像をアップロードできませんでした。" }, { status: 400 });
+      }
+      uploadedPaths.push(uploaded.path);
+      if (target === "cover") coverPath = uploaded.path;
+      if (target === "logo") logoPath = uploaded.path;
+    }
+
+    if (formData.get("removeCover") === "on") coverPath = null;
+    if (formData.get("removeLogo") === "on") logoPath = null;
+
+    const { error } = await supabase.from("companies").update({
         name: result.data.name,
         founded_year: foundedYear ? Number(foundedYear) : null,
         phone: result.data.phone,
@@ -44,8 +76,20 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
         address: result.data.address,
         business_hours: result.data.businessHours,
         description: result.data.description,
+        cover_image_path: coverPath,
+        logo_path: logoPath,
       }).eq("id", companyId);
-      if (error) return data({ error: "企業情報を保存できませんでした。" }, { status: 400 });
+    if (error) {
+      await removeImages("company-assets", uploadedPaths);
+      return data({ error: "企業情報を保存できませんでした。" }, { status: 400 });
+    }
+
+    const oldPaths = [currentCompany?.cover_image_path, currentCompany?.logo_path]
+      .filter((path): path is string => Boolean(path))
+      .filter((path) => !uploadedPaths.includes(path) && path !== coverPath && path !== logoPath);
+    const orphanedUploads = uploadedPaths.filter((path) => path !== coverPath && path !== logoPath);
+    const removeError = await removeImages("company-assets", [...oldPaths, ...orphanedUploads]);
+    if (removeError) return data({ error: "情報は保存しましたが、古い画像を削除できませんでした。" }, { status: 400 });
     }
   }
 
@@ -63,11 +107,15 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
 
   const supabase = getSupabaseBrowserClient();
   const { data: record, error } = await supabase.from("companies")
-    .select("name, founded_year, phone, website_url, address, business_hours, description")
+    .select("name, founded_year, phone, website_url, address, business_hours, description, logo_path, cover_image_path")
     .eq("id", companyId)
     .maybeSingle();
   if (error) throw error;
   if (!record) return serverData;
+  const [coverImage, logoImage] = await Promise.all([
+    getSignedImageUrl("company-assets", record.cover_image_path),
+    getSignedImageUrl("company-assets", record.logo_path),
+  ]);
 
   return {
     ...serverData,
@@ -84,6 +132,9 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
       address: record.address,
       businessHours: record.business_hours,
       description: record.description,
+      image: coverImage ?? logoImage ?? "",
+      coverImage: coverImage ?? undefined,
+      logoImage: logoImage ?? undefined,
     },
   };
 }
@@ -102,10 +153,18 @@ export default function CompanyProfileEditRoute({ loaderData, actionData }: Rout
       <header className="page-heading"><h1>企業情報の編集</h1></header>
       {actionData && "saved" in actionData && actionData.saved ? <p className="success-message" role="status">企業情報を保存しました。</p> : null}
       {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
-      <Form method="post" className="edit-form">
+      <Form method="post" encType="multipart/form-data" className="edit-form">
         <section className="company-media-fields">
-          <button type="button" className="media-placeholder"><Plus /><span>メイン画像を追加</span></button>
-          <button type="button" className="media-placeholder"><Camera /><span>ロゴ画像を追加</span></button>
+          <label className="media-placeholder media-upload">
+            {loaderData.company.coverImage ? <img src={loaderData.company.coverImage} alt="企業のメイン画像" /> : <><Plus /><span>メイン画像を追加</span></>}
+            <input type="file" name="coverImage" accept="image/jpeg,image/png,image/webp" />
+          </label>
+          <label className="media-placeholder media-upload">
+            {loaderData.company.logoImage ? <img src={loaderData.company.logoImage} alt="企業ロゴ" /> : <><Camera /><span>ロゴ画像を追加</span></>}
+            <input type="file" name="logoImage" accept="image/jpeg,image/png,image/webp" />
+          </label>
+          <label className="media-remove"><input type="checkbox" name="removeCover" /> <Trash2 size={14} />メイン画像を削除</label>
+          <label className="media-remove"><input type="checkbox" name="removeLogo" /> <Trash2 size={14} />ロゴ画像を削除</label>
         </section>
         <section className="form-card">
           <h2>企業情報</h2>

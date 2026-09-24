@@ -9,6 +9,7 @@ import { media } from "../data/media";
 import type { CaseStudy } from "../features/cases/types";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
+import { getSignedImageUrl, isImageFile, removeImages, uploadImage } from "../features/media/image-storage.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 
 const caseSchema = z.object({
@@ -18,16 +19,25 @@ const caseSchema = z.object({
   summary: z.string().trim().max(2000),
 });
 
+type CaseImageView = { id: string; storagePath: string; url: string };
+
 export function loader({ params }: Route.LoaderArgs) {
-  return { item: null as CaseStudy | null, caseId: params.caseId ?? "" };
+  return { item: null as CaseStudy | null, caseId: params.caseId ?? "", caseImages: [] as CaseImageView[] };
 }
 
 export async function clientAction({ request, params }: Route.ClientActionArgs) {
   await requireAuthorization(request, { roles: ["COMPANY", "ADMIN"] });
-  const result = caseSchema.safeParse(Object.fromEntries(await request.formData()));
+  const formData = await request.formData();
+  const result = caseSchema.safeParse(Object.fromEntries(formData));
   if (!result.success) return data({ error: "入力内容を確認してください。" }, { status: 400 });
   if (isSupabaseConfigured() && params.caseId) {
     const supabase = getSupabaseBrowserClient();
+    const { data: currentCase, error: currentCaseError } = await supabase.from("construction_cases")
+      .select("company_id")
+      .eq("id", params.caseId)
+      .maybeSingle();
+    if (currentCaseError || !currentCase) return data({ error: "施工事例が見つかりません。" }, { status: 404 });
+
     const { error } = await supabase.from("construction_cases").update({
       title: result.data.title,
       area: result.data.area,
@@ -35,6 +45,52 @@ export async function clientAction({ request, params }: Route.ClientActionArgs) 
       summary: result.data.summary,
     }).eq("id", params.caseId);
     if (error) return data({ error: "施工事例を保存できませんでした。" }, { status: 400 });
+
+    const removeIds = formData.getAll("removeImageIds").filter((value): value is string => typeof value === "string");
+    if (removeIds.length) {
+      const { data: imageRows, error: imageRowsError } = await supabase.from("case_images")
+        .select("id, storage_path")
+        .eq("case_id", params.caseId)
+        .in("id", removeIds);
+      if (imageRowsError) return data({ error: "削除する画像を取得できませんでした。" }, { status: 400 });
+      const paths = (imageRows ?? []).map((row) => row.storage_path);
+      const storageError = await removeImages("case-images", paths);
+      if (storageError) return data({ error: "画像ファイルを削除できませんでした。" }, { status: 400 });
+      const { error: deleteRowsError } = await supabase.from("case_images")
+        .delete()
+        .eq("case_id", params.caseId)
+        .in("id", removeIds);
+      if (deleteRowsError) return data({ error: "画像情報を削除できませんでした。" }, { status: 400 });
+    }
+
+    const files = formData.getAll("images").filter(isImageFile);
+    const uploadedPaths: string[] = [];
+    for (const file of files) {
+      const uploaded = await uploadImage("case-images", `${currentCase.company_id}/${params.caseId}`, file, 10 * 1024 * 1024);
+      if (uploaded.error || !uploaded.path) {
+        await removeImages("case-images", uploadedPaths);
+        return data({ error: uploaded.error ?? "施工事例の画像をアップロードできませんでした。" }, { status: 400 });
+      }
+      uploadedPaths.push(uploaded.path);
+    }
+    if (uploadedPaths.length) {
+      const { data: lastImage } = await supabase.from("case_images")
+        .select("display_order")
+        .eq("case_id", params.caseId)
+        .order("display_order", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const startOrder = (lastImage?.display_order ?? -1) + 1;
+      const { error: imageError } = await supabase.from("case_images").insert(uploadedPaths.map((storagePath, index) => ({
+        case_id: params.caseId,
+        storage_path: storagePath,
+        display_order: startOrder + index,
+      })));
+      if (imageError) {
+        await removeImages("case-images", uploadedPaths);
+        return data({ error: "施工事例の画像を保存できませんでした。" }, { status: 400 });
+      }
+    }
   }
   return data({ saved: true });
 }
@@ -51,8 +107,19 @@ export async function clientLoader({ request, params, serverLoader }: Route.Clie
     .maybeSingle();
   if (error) throw error;
   if (!item) throw new Response("施工事例が見つかりません", { status: 404 });
+  const { data: imageRows, error: imageError } = await supabase.from("case_images")
+    .select("id, storage_path")
+    .eq("case_id", params.caseId)
+    .order("display_order");
+  if (imageError) throw imageError;
+  const caseImages = (await Promise.all((imageRows ?? []).map(async (image) => ({
+    id: image.id,
+    storagePath: image.storage_path,
+    url: await getSignedImageUrl("case-images", image.storage_path),
+  })))).filter((image): image is CaseImageView => Boolean(image.url));
   return {
     ...serverData,
+    caseImages,
     item: {
       id: params.caseId,
       title: item.title,
@@ -61,7 +128,8 @@ export async function clientLoader({ request, params, serverLoader }: Route.Clie
       period: item.construction_period,
       company: "",
       companyId: "",
-      image: media.kitchen,
+      image: caseImages[0]?.url ?? media.kitchen,
+      images: caseImages.map((image) => image.url),
       price: "",
       categories: [],
     },
@@ -82,11 +150,18 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
       <header className="page-heading"><h1>施工事例の編集</h1></header>
       {actionData && "saved" in actionData && actionData.saved ? <p className="success-message" role="status">施工事例を保存しました。</p> : null}
       {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
-      <Form method="post" className="edit-form">
+      <Form method="post" encType="multipart/form-data" className="edit-form">
         <section className="case-photo-editor">
-          <img src={media.kitchen} alt="施工事例" />
-          <img src={media.living} alt="施工事例" />
-          <button type="button"><ImagePlus /><span>写真を追加</span></button>
+          {loaderData.caseImages.map((image) => (
+            <div className="case-photo-item" key={image.id}>
+              <img src={image.url} alt="施工事例" />
+              <label><input type="checkbox" name="removeImageIds" value={image.id} />削除</label>
+            </div>
+          ))}
+          <label className="case-photo-add">
+            <ImagePlus /><span>写真を追加</span>
+            <input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple />
+          </label>
         </section>
         <section className="form-card">
           <div className="form-grid">

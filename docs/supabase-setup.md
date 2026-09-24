@@ -14,6 +14,8 @@ SQLには次の内容が含まれます。
 - 一般ユーザー／企業メンバー／管理者向けのRLS
 - 企業画像と施工画像のprivate Storage bucketおよびアクセス制御
 
+`supabase/setup.sql` には `company-assets`（企業のメイン画像・ロゴ）と `case-images`（施工事例画像）の2つのStorage bucket作成も含まれます。既にデータベースを作成済みの環境でも、今回の変更を反映するためSQL Editorでファイル全体をもう一度実行してください。既存の企業アカウントが一覧に出ない問題も、この実行で承認済み企業を公開状態へ補正します。
+
 企業を作成したユーザーには、SQL内のトリガーが company_members の OWNER 権限を自動付与します。
 Service Role Keyをブラウザへ公開してはいけません。
 
