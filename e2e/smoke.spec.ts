@@ -7,12 +7,17 @@ const pages = [
   ["/cases/1", "キッチンを中心にしたリノベーション"],
   ["/login", "ログイン"],
   ["/signup", "新規登録"],
-  ["/mypage", "飯塚でリノベーションを探す"],
-  ["/mypage/favorites", "お気に入り"],
-  ["/company", "リノベーションを通して、住む人すべてを豊かに。"],
-  ["/company/profile/edit", "企業情報の編集"],
-  ["/company/cases/new", "施工事例の編集"],
   ["/companies/1", "株式会社リビングデザイン"],
+] as const;
+
+const protectedPages = [
+  "/mypage",
+  "/mypage/favorites",
+  "/company/apply",
+  "/company",
+  "/company/profile/edit",
+  "/company/cases/new",
+  "/admin",
 ] as const;
 
 for (const [path, heading] of pages) {
@@ -20,6 +25,13 @@ for (const [path, heading] of pages) {
     const response = await page.goto(path, { waitUntil: "domcontentloaded" });
     expect(response?.ok()).toBe(true);
     await expect(page.getByRole("heading", { name: heading, exact: false }).first()).toBeVisible();
+  });
+}
+
+for (const path of protectedPages) {
+  test(path + " は未認証でログインへ誘導する", async ({ page }) => {
+    await page.goto(path, { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/login\?redirectTo=/);
   });
 }
 
@@ -86,6 +98,15 @@ test("スマホではメニューが左、ブランドが右にあり、メニ�
   await expect(page.getByRole("button", { name: "メニューを閉じる" })).toHaveAttribute("aria-expanded", "true");
 });
 
+test("ヘッダーはスクロールしても画面上部に残る", async ({ page }) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.evaluate(() => window.scrollTo(0, 600));
+
+  const headerBox = await page.locator("header.site-header").boundingBox();
+  expect(headerBox).not.toBeNull();
+  expect(headerBox!.y).toBeLessThanOrEqual(1);
+});
+
 test("お問い合わせページは共通ヘッダーだけを使い、サイドバーを表示しない", async ({ page }) => {
   await page.goto("/contact", { waitUntil: "domcontentloaded" });
 
@@ -93,15 +114,9 @@ test("お問い合わせページは共通ヘッダーだけを使い、サイ�
   await expect(page.locator("aside.sidebar")).toHaveCount(0);
 });
 
-test("ダッシュボードのサイドバーには固有の操作だけを表示する", async ({ page }) => {
+test("未認証では企業ダッシュボードからログインへ誘導する", async ({ page }) => {
   await page.goto("/company", { waitUntil: "domcontentloaded" });
-
-  const sidebar = page.getByRole("complementary", { name: "企業メニュー" });
-  await expect(sidebar.getByRole("link", { name: "ダッシュボード" })).toBeVisible();
-  await expect(sidebar.getByRole("link", { name: "企業情報の編集" })).toBeVisible();
-  await expect(sidebar.getByRole("link", { name: "施工事例の追加" })).toBeVisible();
-  await expect(sidebar.getByRole("link", { name: "問い合わせ" })).toHaveCount(0);
-  await expect(sidebar.getByRole("link", { name: "飯塚のリノベ" })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/login\?redirectTo=/);
 });
 
 test("Google OAuthボタンに公式Gロゴを表示する", async ({ page }) => {
