@@ -64,19 +64,18 @@ Supabase Dashboardの「Authentication > Providers > Email」でEmail Provider�
 
 GoogleのClient SecretはSupabase Dashboardだけに保存し、.env やリポジトリには追加しません。
 
-## 5. お問い合わせメールを設定する
+## 5. お問い合わせ通知を設定する
 
-お問い合わせはResend APIから、選択された企業の登録メールアドレスへ送信します。システム管理者はBccで `SYSTEM_ADMIN_EMAIL`（初期値 `nao.yellowtail.1729@gmail.com`）へ送信されます。
+お問い合わせは外部メールサービスを使わず、`contact_messages` テーブルへ保存します。送信者が選択した企業のダッシュボードにメッセージが表示され、企業ユーザーは内容を確認して既読にできます。ログインしていないユーザーからも送信できます。
 
-サーバー環境変数に次を設定してください。
+企業ごとのメールアドレス登録は問い合わせ送信には不要です。企業プロフィールに登録したメールアドレスは、企業情報として表示するために利用できます。
 
-~~~dotenv
-RESEND_API_KEY=<Resend API key>
-RESEND_FROM_EMAIL=notifications@example.com
-SYSTEM_ADMIN_EMAIL=nao.yellowtail.1729@gmail.com
-~~~
+企業間のメッセージが見えないよう、SQL内で次のRLSを設定しています。
 
-`RESEND_FROM_EMAIL` はResendで認証済みの送信元アドレスを使用してください。企業の問い合わせ先メールアドレスは企業マイページの企業情報編集から登録できます。
+- 企業ユーザーは自社宛てのメッセージだけ閲覧可能
+- 管理者は全企業のメッセージを閲覧可能
+- 公開フォームは停止されていない企業へだけ保存可能
+- 既読化は所属企業のメンバーまたは管理者だけ可能
 
 ## 6. 動作確認
 
@@ -88,3 +87,5 @@ npm run dev
 - /login: メールアドレスとパスワードでログイン
 - 「Googleで続ける」: Google OAuth
 - ログイン後の共通ヘッダー: マイページとログアウトを表示
+- `/contact`: 企業を必須選択して問い合わせを登録
+- `/company`: 自社宛て問い合わせの確認と既読化

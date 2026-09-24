@@ -970,6 +970,83 @@ img {
   color: var(--muted);
 }
 
+.contact-message-list {
+  display: grid;
+  gap: 12px;
+}
+
+.contact-message {
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 16px;
+}
+
+.contact-message--unread {
+  border-color: #98c49d;
+  box-shadow: inset 3px 0 #4b9d5b;
+}
+
+.contact-message__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.contact-message__header > div {
+  display: grid;
+  gap: 5px;
+}
+
+.contact-message__header span,
+.contact-message__status {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.contact-message__header .button {
+  min-height: 30px;
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.contact-message__sender {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 14px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 10px 0;
+  font-size: 11px;
+}
+
+.contact-message__sender div {
+  display: flex;
+  gap: 8px;
+}
+
+.contact-message__sender dt {
+  color: var(--muted);
+}
+
+.contact-message__sender dd {
+  margin: 0;
+}
+
+.contact-message p {
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+  line-height: 1.8;
+}
+
+.contact-message > a {
+  color: var(--green-900);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 .avatar {
   display: grid;
   width: 28px;
@@ -1567,6 +1644,10 @@ img {
   .member-list span,
   .member-list small {
     grid-column: 2;
+  }
+
+  .contact-message__header {
+    display: grid;
   }
 
   .company-media-fields,

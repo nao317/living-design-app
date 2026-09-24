@@ -5,23 +5,23 @@ import { Button } from "../components/atoms";
 import { Field } from "../components/molecules";
 import { PublicLayout } from "../components/templates";
 import { fetchPublishedCompanyContacts } from "../features/cases/public-data.client";
-import { sendContactEmail } from "../features/contact/email.server";
+import { createContactMessage } from "../features/contact/messages.server";
 
 const contactSchema = z.object({
   name: z.string().trim().min(1).max(80),
   email: z.email(),
   companyId: z.uuid(),
-  caseId: z.string().trim().optional(),
+  caseId: z.uuid().optional(),
   subject: z.enum(["renovation", "company", "account", "other"]),
   message: z.string().trim().min(10).max(2000),
 });
 
-type PublicCompany = { id: string; name: string; email: string };
+type PublicCompany = { id: string; name: string };
 
 export function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   return {
-    companies: [] as Array<{ id: string; name: string; hasEmail: boolean }>,
+    companies: [] as Array<{ id: string; name: string }>,
     selectedCompanyId: url.searchParams.get("companyId") ?? "",
     caseId: url.searchParams.get("caseId") ?? "",
   };
@@ -43,7 +43,7 @@ async function findCompany(companyId: string): Promise<PublicCompany | null> {
   if (!supabaseUrl || !supabaseKey) return null;
 
   const endpoint = new URL(`${supabaseUrl}/rest/v1/companies`);
-  endpoint.searchParams.set("select", "id,name,email");
+  endpoint.searchParams.set("select", "id,name");
   endpoint.searchParams.set("id", `eq.${companyId}`);
   endpoint.searchParams.set("status", "neq.SUSPENDED");
   const response = await fetch(endpoint, {
@@ -74,20 +74,19 @@ export async function action({ request }: Route.ActionArgs) {
   }
 
   const company = await findCompany(result.data.companyId);
-  if (!company?.email) {
-    return data({ sent: false, error: "選択した企業の問い合わせ先メールアドレスが登録されていません。" }, { status: 400 });
+  if (!company) {
+    return data({ sent: false, error: "選択した企業が見つかりません。" }, { status: 400 });
   }
 
-  const emailError = await sendContactEmail({
-    to: company.email,
-    companyName: company.name,
+  const messageError = await createContactMessage({
+    companyId: result.data.companyId,
     senderName: result.data.name,
     senderEmail: result.data.email,
     subject: subjectLabels[result.data.subject],
     message: result.data.message,
     caseId: result.data.caseId,
   });
-  if (emailError) return data({ sent: false, error: emailError }, { status: 500 });
+  if (messageError) return data({ sent: false, error: messageError }, { status: 500 });
   return data({ sent: true, error: "" });
 }
 
@@ -106,7 +105,7 @@ export default function ContactRoute({ loaderData, actionData }: Route.Component
         <section className="contact-panel" aria-label="お問い合わせフォーム">
           {actionData?.sent ? (
             <div className="form-success" role="status">
-              お問い合わせを受け付けました。選択した企業へ送信しました。
+              お問い合わせを受け付けました。選択した企業のダッシュボードに届けました。
             </div>
           ) : (
             <Form method="post" className="contact-form">
@@ -114,7 +113,7 @@ export default function ContactRoute({ loaderData, actionData }: Route.Component
               <Field label="お問い合わせ先企業">
                 <select name="companyId" defaultValue={loaderData.selectedCompanyId} required>
                   <option value="">企業を選択してください</option>
-                  {loaderData.companies.map((company) => <option key={company.id} value={company.id} disabled={!company.hasEmail}>{company.name}{company.hasEmail ? "" : "（メール未登録）"}</option>)}
+                  {loaderData.companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
                 </select>
               </Field>
               {loaderData.caseId ? <input type="hidden" name="caseId" value={loaderData.caseId} /> : null}

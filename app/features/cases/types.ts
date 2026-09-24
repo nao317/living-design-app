@@ -48,5 +48,17 @@ export type CompanyMember = {
 export type CompanyContactOption = {
   id: string;
   name: string;
-  hasEmail: boolean;
+};
+
+export type ContactMessage = {
+  id: string;
+  companyId: string;
+  senderName: string;
+  senderEmail: string;
+  subject: string;
+  message: string;
+  caseId?: string;
+  status: "NEW" | "READ" | "ARCHIVED";
+  createdAt: string;
+  readAt?: string;
 };

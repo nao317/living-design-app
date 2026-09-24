@@ -1,6 +1,6 @@
 import { getSignedImageUrl } from "../media/image-storage.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../../lib/supabase.client";
-import type { CaseStudy, CompanyContactOption, CompanyMember, CompanyProfile, CompanySummary } from "./types";
+import type { CaseStudy, CompanyContactOption, CompanyMember, CompanyProfile, CompanySummary, ContactMessage } from "./types";
 
 type CaseRow = {
   id: string;
@@ -25,6 +25,19 @@ type CompanyRow = {
   description: string;
   logo_path?: string | null;
   cover_image_path?: string | null;
+};
+
+type ContactMessageRow = {
+  id: string;
+  company_id: string;
+  sender_name: string;
+  sender_email: string;
+  subject: string;
+  message: string;
+  case_id: string | null;
+  status: ContactMessage["status"];
+  created_at: string;
+  read_at: string | null;
 };
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -224,14 +237,16 @@ export async function fetchFavoriteCases() {
 export async function fetchManagedCompany(companyId: string) {
   if (!isSupabaseConfigured()) return null;
   const supabase = getSupabaseBrowserClient();
-  const [{ data: company, error: companyError }, { data: caseRows, error: casesError }, { data: memberRows, error: membersError }] = await Promise.all([
+  const [{ data: company, error: companyError }, { data: caseRows, error: casesError }, { data: memberRows, error: membersError }, { data: messageRows, error: messagesError }] = await Promise.all([
     supabase.from("companies").select("id, name, email, address, phone, founded_year, business_hours, website_url, description, logo_path, cover_image_path").eq("id", companyId).maybeSingle(),
     supabase.from("construction_cases").select("id, company_id, title, summary, area, price_min, price_max, construction_period").eq("company_id", companyId).order("updated_at", { ascending: false }),
     supabase.from("company_members").select("user_id, role").eq("company_id", companyId),
+    supabase.from("contact_messages").select("id, company_id, sender_name, sender_email, subject, message, case_id, status, created_at, read_at").eq("company_id", companyId).order("created_at", { ascending: false }),
   ]);
   if (companyError) throw companyError;
   if (casesError) throw casesError;
   if (membersError) throw membersError;
+  if (messagesError) throw messagesError;
   if (!company) return null;
 
   const members = (memberRows ?? []) as Array<{ user_id: string; role: string }>;
@@ -282,6 +297,18 @@ export async function fetchManagedCompany(companyId: string) {
       return { ...item, image: images[0] ?? item.image, images: images.length ? images : undefined };
     }),
     members: memberList,
+    messages: ((messageRows ?? []) as ContactMessageRow[]).map((message) => ({
+      id: message.id,
+      companyId: message.company_id,
+      senderName: message.sender_name,
+      senderEmail: message.sender_email,
+      subject: message.subject,
+      message: message.message,
+      caseId: message.case_id ?? undefined,
+      status: message.status,
+      createdAt: message.created_at,
+      readAt: message.read_at ?? undefined,
+    } satisfies ContactMessage)),
   };
 }
 
@@ -289,13 +316,12 @@ export async function fetchPublishedCompanyContacts(): Promise<CompanyContactOpt
   if (!isSupabaseConfigured()) return [];
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.from("companies")
-    .select("id, name, email")
+    .select("id, name")
     .neq("status", "SUSPENDED")
     .order("name");
   if (error) throw error;
   return (data ?? []).map((company) => ({
     id: company.id,
     name: company.name,
-    hasEmail: typeof company.email === "string" && company.email.trim().length > 0,
   }));
 }
