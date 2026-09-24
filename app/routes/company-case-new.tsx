@@ -64,7 +64,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       price_max: parsePrice(result.data.priceMax),
       status: "DRAFT",
     }).select("id").single();
-    if (error) return data({ error: "施工事例を登録できませんでした。" }, { status: 400 });
+    if (error) return data({ error: `施工事例を登録できませんでした。${error.message}` }, { status: error.code === "42501" ? 403 : 400 });
 
     const files = formData.getAll("images").filter(isImageFile);
     const uploadedPaths: string[] = [];
@@ -73,7 +73,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       if (uploaded.error || !uploaded.path) {
         await removeImages("case-images", uploadedPaths);
         await supabase.from("construction_cases").delete().eq("id", createdCase.id);
-        return data({ error: uploaded.error ?? "施工事例の画像をアップロードできませんでした。" }, { status: 400 });
+        return data({ error: `施工事例の画像をアップロードできませんでした。${uploaded.error ?? ""}` }, { status: 400 });
       }
       uploadedPaths.push(uploaded.path);
     }
@@ -86,7 +86,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       if (imageError) {
         await removeImages("case-images", uploadedPaths);
         await supabase.from("construction_cases").delete().eq("id", createdCase.id);
-        return data({ error: "施工事例の画像を保存できませんでした。" }, { status: 400 });
+        return data({ error: `施工事例の画像を保存できませんでした。${imageError.message}` }, { status: imageError.code === "42501" ? 403 : 400 });
       }
     }
   }
