@@ -2,7 +2,7 @@ import { Heart, Home, House, Menu, PencilLine, Plus, Search, X } from "lucide-re
 import { Form, Link, NavLink, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
-import type { CaseStudy } from "../../data/mock";
+import type { CaseStudy } from "../../features/cases/types";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../../lib/supabase.client";
 import { CaseCard, CaseListItem } from "../molecules";
 import { Button } from "../atoms";

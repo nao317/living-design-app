@@ -5,11 +5,11 @@ import { z } from "zod";
 import { Button, Tag } from "../components/atoms";
 import { Field } from "../components/molecules";
 import { DashboardLayout } from "../components/templates";
-import { company } from "../data/mock";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { getAuthorizationContext } from "../features/auth/authorization.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
+import type { CompanyProfile } from "../features/cases/types";
 
 const profileSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -22,7 +22,7 @@ const profileSchema = z.object({
 });
 
 export function loader() {
-  return { company };
+  return { company: null as CompanyProfile | null };
 }
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
@@ -72,7 +72,11 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
   return {
     ...serverData,
     company: {
-      ...serverData.company,
+      ...(serverData.company ?? {
+        id: companyId,
+        image: "",
+        features: [],
+      }),
       name: record.name,
       founded: record.founded_year ? `${record.founded_year}年` : "",
       phone: record.phone,
@@ -91,6 +95,8 @@ export function HydrateFallback() {
 }
 
 export default function CompanyProfileEditRoute({ loaderData, actionData }: Route.ComponentProps) {
+  if (!loaderData.company) return <DashboardLayout type="company"><div className="empty-state"><h1>企業情報が見つかりません</h1></div></DashboardLayout>;
+
   return (
     <DashboardLayout type="company">
       <header className="page-heading"><h1>企業情報の編集</h1></header>

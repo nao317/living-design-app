@@ -5,7 +5,8 @@ import { z } from "zod";
 import { Button, Tag } from "../components/atoms";
 import { Field } from "../components/molecules";
 import { DashboardLayout } from "../components/templates";
-import { cases, images } from "../data/mock";
+import { media } from "../data/media";
+import type { CaseStudy } from "../features/cases/types";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
@@ -18,7 +19,7 @@ const caseSchema = z.object({
 });
 
 export function loader({ params }: Route.LoaderArgs) {
-  return { item: cases.find((entry) => entry.id === params.caseId) ?? cases[0] };
+  return { item: null as CaseStudy | null, caseId: params.caseId ?? "" };
 }
 
 export async function clientAction({ request, params }: Route.ClientActionArgs) {
@@ -49,8 +50,22 @@ export async function clientLoader({ request, params, serverLoader }: Route.Clie
     .eq("id", params.caseId)
     .maybeSingle();
   if (error) throw error;
-  if (!item) return serverData;
-  return { ...serverData, item: { ...serverData.item, title: item.title, summary: item.summary, area: item.area, period: item.construction_period } };
+  if (!item) throw new Response("施工事例が見つかりません", { status: 404 });
+  return {
+    ...serverData,
+    item: {
+      id: params.caseId,
+      title: item.title,
+      summary: item.summary,
+      area: item.area,
+      period: item.construction_period,
+      company: "",
+      companyId: "",
+      image: media.kitchen,
+      price: "",
+      categories: [],
+    },
+  };
 }
 
 clientLoader.hydrate = true as const;
@@ -61,6 +76,7 @@ export function HydrateFallback() {
 
 export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.ComponentProps) {
   const isAdmin = useLocation().pathname.startsWith("/admin/");
+  if (!loaderData.item) return <DashboardLayout type={isAdmin ? "admin" : "company"}><div className="empty-state"><h1>施工事例が見つかりません</h1></div></DashboardLayout>;
   return (
     <DashboardLayout type={isAdmin ? "admin" : "company"}>
       <header className="page-heading"><h1>施工事例の編集</h1></header>
@@ -68,8 +84,8 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
       {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
       <Form method="post" className="edit-form">
         <section className="case-photo-editor">
-          <img src={images.kitchen} alt="施工事例" />
-          <img src={images.living} alt="施工事例" />
+          <img src={media.kitchen} alt="施工事例" />
+          <img src={media.living} alt="施工事例" />
           <button type="button"><ImagePlus /><span>写真を追加</span></button>
         </section>
         <section className="form-card">

@@ -2,8 +2,9 @@ import type { Route } from "./+types/search";
 import { SearchBar, Pagination } from "../components/molecules";
 import { CaseList, Filters } from "../components/organisms";
 import { PublicLayout } from "../components/templates";
-import { cases } from "../data/mock";
 import { searchParamsSchema } from "../features/search/schema";
+import { fetchPublishedCases } from "../features/cases/public-data.client";
+import type { CaseStudy } from "../features/cases/types";
 
 export function meta() {
   return [{ title: "検索結果 | 飯塚のリノベ" }];
@@ -12,11 +13,20 @@ export function meta() {
 export function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const filters = searchParamsSchema.parse(Object.fromEntries(url.searchParams));
-  const filtered = filters.q
-    ? cases.filter((item) => [item.title, item.company, item.area, ...item.categories].join(" ").includes(filters.q))
-    : cases;
-  return { items: filtered, filters, total: filtered.length };
+  return { items: [] as CaseStudy[], filters, total: 0 };
 }
+
+export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
+  const serverData = await serverLoader();
+  const items = await fetchPublishedCases();
+  const filters = searchParamsSchema.parse(Object.fromEntries(new URL(request.url).searchParams));
+  const filtered = filters.q
+    ? items.filter((item) => [item.title, item.company, item.area, ...item.categories].join(" ").includes(filters.q))
+    : items;
+  return { ...serverData, items: filtered, filters, total: filtered.length };
+}
+
+clientLoader.hydrate = true as const;
 
 export default function SearchRoute({ loaderData }: Route.ComponentProps) {
   return (
