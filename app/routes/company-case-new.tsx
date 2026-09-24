@@ -6,6 +6,7 @@ import { Field } from "../components/molecules";
 import { DashboardLayout } from "../components/templates";
 import { requireAuthorization, getAuthorizationContext } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
+import { isImageFile, removeImages, uploadImage } from "../features/media/image-storage.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 
 const caseSchema = z.object({
@@ -40,7 +41,8 @@ export function HydrateFallback() {
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const context = await requireAuthorization(request, { role: "COMPANY" });
-  const result = caseSchema.safeParse(Object.fromEntries(await request.formData()));
+  const formData = await request.formData();
+  const result = caseSchema.safeParse(Object.fromEntries(formData));
   if (!result.success || parsePrice(result.data.priceMin) === undefined || parsePrice(result.data.priceMax) === undefined) {
     return data({ error: "入力内容を確認してください。" }, { status: 400 });
   }
@@ -51,7 +53,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     if (!companyId) return data({ error: "所属企業が見つかりません。" }, { status: 400 });
 
     const supabase = getSupabaseBrowserClient();
-    const { error } = await supabase.from("construction_cases").insert({
+    const { data: createdCase, error } = await supabase.from("construction_cases").insert({
       company_id: companyId,
       created_by: context.userId,
       title: result.data.title,
@@ -61,8 +63,32 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       price_min: parsePrice(result.data.priceMin),
       price_max: parsePrice(result.data.priceMax),
       status: "DRAFT",
-    });
+    }).select("id").single();
     if (error) return data({ error: "施工事例を登録できませんでした。" }, { status: 400 });
+
+    const files = formData.getAll("images").filter(isImageFile);
+    const uploadedPaths: string[] = [];
+    for (const file of files) {
+      const uploaded = await uploadImage("case-images", `${companyId}/${createdCase.id}`, file, 10 * 1024 * 1024);
+      if (uploaded.error || !uploaded.path) {
+        await removeImages("case-images", uploadedPaths);
+        await supabase.from("construction_cases").delete().eq("id", createdCase.id);
+        return data({ error: uploaded.error ?? "施工事例の画像をアップロードできませんでした。" }, { status: 400 });
+      }
+      uploadedPaths.push(uploaded.path);
+    }
+    if (uploadedPaths.length) {
+      const { error: imageError } = await supabase.from("case_images").insert(uploadedPaths.map((storagePath, index) => ({
+        case_id: createdCase.id,
+        storage_path: storagePath,
+        display_order: index,
+      })));
+      if (imageError) {
+        await removeImages("case-images", uploadedPaths);
+        await supabase.from("construction_cases").delete().eq("id", createdCase.id);
+        return data({ error: "施工事例の画像を保存できませんでした。" }, { status: 400 });
+      }
+    }
   }
 
   return data({ saved: true });
@@ -74,7 +100,7 @@ export default function CompanyCaseNewRoute({ actionData }: Route.ComponentProps
       <header className="page-heading"><h1>施工事例の追加</h1><p>自社の施工事例を登録します。</p></header>
       {actionData && "saved" in actionData && actionData.saved ? <p className="success-message" role="status">施工事例を登録しました。</p> : null}
       {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
-      <Form method="post" className="edit-form">
+      <Form method="post" encType="multipart/form-data" className="edit-form">
         <section className="form-card">
           <div className="form-grid">
             <Field label="タイトル"><input name="title" required maxLength={160} /></Field>
@@ -84,6 +110,7 @@ export default function CompanyCaseNewRoute({ actionData }: Route.ComponentProps
             <Field label="費用上限"><input name="priceMax" type="number" min="0" inputMode="numeric" /></Field>
           </div>
           <Field label="概要"><textarea name="summary" rows={5} maxLength={2000} /></Field>
+          <Field label="施工写真"><input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple /></Field>
           <div className="form-actions"><Button type="submit">登録する</Button></div>
         </section>
       </Form>

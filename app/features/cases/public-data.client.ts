@@ -1,4 +1,5 @@
 import { media } from "../../data/media";
+import { getSignedImageUrl } from "../media/image-storage.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../../lib/supabase.client";
 import type { CaseStudy, CompanyMember, CompanyProfile, CompanySummary } from "./types";
 
@@ -22,6 +23,8 @@ type CompanyRow = {
   business_hours: string;
   website_url: string | null;
   description: string;
+  logo_path?: string | null;
+  cover_image_path?: string | null;
 };
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -55,13 +58,26 @@ async function fetchCasesByRows(rows: CaseRow[]) {
   const { data, error } = await supabase.from("companies")
     .select("id, name")
     .in("id", companyIds)
-    .eq("status", "PUBLISHED");
+    .neq("status", "SUSPENDED");
   if (error) throw error;
 
   const companies = new Map((data ?? []).map((company) => [company.id, company]));
+  const { data: imageRows, error: imageError } = await supabase.from("case_images")
+    .select("case_id, storage_path, display_order")
+    .in("case_id", rows.map((row) => row.id))
+    .order("display_order");
+  if (imageError) throw imageError;
+  const imageUrls = new Map<string, string[]>();
+  for (const image of imageRows ?? []) {
+    const url = await getSignedImageUrl("case-images", image.storage_path);
+    if (url) imageUrls.set(image.case_id, [...(imageUrls.get(image.case_id) ?? []), url]);
+  }
   return rows.flatMap((row, index) => {
     const company = companies.get(row.company_id);
-    return company ? [toCaseStudy(row, company, index)] : [];
+    if (!company) return [];
+    const item = toCaseStudy(row, company, index);
+    const images = imageUrls.get(row.id) ?? [];
+    return [{ ...item, image: images[0] ?? item.image, images: images.length ? images : undefined }];
   });
 }
 
@@ -92,9 +108,9 @@ export async function fetchCompanyById(companyId: string) {
   if (!isSupabaseConfigured() || !uuidPattern.test(companyId)) return null;
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.from("companies")
-    .select("id, name, address, phone, founded_year, business_hours, website_url, description")
+    .select("id, name, address, phone, founded_year, business_hours, website_url, description, logo_path, cover_image_path")
     .eq("id", companyId)
-    .eq("status", "PUBLISHED")
+    .neq("status", "SUSPENDED")
     .maybeSingle();
   if (error) throw error;
   if (!data) return null;
@@ -106,13 +122,16 @@ export async function fetchCompanyById(companyId: string) {
     .order("published_at", { ascending: false });
   if (casesError) throw casesError;
 
+  const companyImage = await getSignedImageUrl("company-assets", company.cover_image_path ?? company.logo_path);
   return {
     company: {
       ...company,
       founded: company.founded_year ? `${company.founded_year}年` : "",
       website: company.website_url ?? "",
       businessHours: company.business_hours,
-      image: media.office,
+      image: companyImage ?? media.office,
+      logoImage: await getSignedImageUrl("company-assets", company.logo_path),
+      coverImage: companyImage ?? undefined,
       features: [],
     },
     cases: await fetchCasesByRows((caseRows ?? []) as CaseRow[]),
@@ -123,17 +142,17 @@ export async function fetchPublishedCompanies(): Promise<CompanySummary[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.from("companies")
-    .select("id, name, address, description")
-    .eq("status", "PUBLISHED")
+    .select("id, name, address, description, logo_path, cover_image_path")
+    .neq("status", "SUSPENDED")
     .order("name");
   if (error) throw error;
-  return (data ?? []).map((company) => ({
+  return Promise.all((data ?? []).map(async (company) => ({
     id: company.id,
     name: company.name,
     address: company.address,
     description: company.description,
-    image: media.office,
-  }));
+    image: await getSignedImageUrl("company-assets", company.cover_image_path ?? company.logo_path) ?? media.office,
+  })));
 }
 
 export async function fetchFavoriteCases() {
@@ -155,7 +174,7 @@ export async function fetchManagedCompany(companyId: string) {
   if (!isSupabaseConfigured()) return null;
   const supabase = getSupabaseBrowserClient();
   const [{ data: company, error: companyError }, { data: caseRows, error: casesError }, { data: memberRows, error: membersError }] = await Promise.all([
-    supabase.from("companies").select("id, name, address, phone, founded_year, business_hours, website_url, description").eq("id", companyId).maybeSingle(),
+    supabase.from("companies").select("id, name, address, phone, founded_year, business_hours, website_url, description, logo_path, cover_image_path").eq("id", companyId).maybeSingle(),
     supabase.from("construction_cases").select("id, company_id, title, summary, area, price_min, price_max, construction_period").eq("company_id", companyId).order("updated_at", { ascending: false }),
     supabase.from("company_members").select("user_id, role").eq("company_id", companyId),
   ]);
@@ -177,7 +196,9 @@ export async function fetchManagedCompany(companyId: string) {
     founded: companyRow.founded_year ? `${companyRow.founded_year}年` : "",
     website: companyRow.website_url ?? "",
     businessHours: companyRow.business_hours,
-    image: media.office,
+    image: await getSignedImageUrl("company-assets", companyRow.cover_image_path ?? companyRow.logo_path) ?? media.office,
+    logoImage: (await getSignedImageUrl("company-assets", companyRow.logo_path)) ?? undefined,
+    coverImage: (await getSignedImageUrl("company-assets", companyRow.cover_image_path)) ?? undefined,
     features: [],
   };
   const memberList: CompanyMember[] = members.map((member) => ({
@@ -187,9 +208,27 @@ export async function fetchManagedCompany(companyId: string) {
     email: "",
   }));
 
+  const managedRows = (caseRows ?? []) as CaseRow[];
+  const caseImageUrls = new Map<string, string[]>();
+  if (managedRows.length) {
+    const { data: imageRows, error: imageError } = await supabase.from("case_images")
+      .select("case_id, storage_path, display_order")
+      .in("case_id", managedRows.map((row) => row.id))
+      .order("display_order");
+    if (imageError) throw imageError;
+    for (const image of imageRows ?? []) {
+      const url = await getSignedImageUrl("case-images", image.storage_path);
+      if (url) caseImageUrls.set(image.case_id, [...(caseImageUrls.get(image.case_id) ?? []), url]);
+    }
+  }
+
   return {
     company: profile,
-    cases: (caseRows ?? []).map((row, index) => toCaseStudy(row as CaseRow, companyRow, index)),
+    cases: managedRows.map((row, index) => {
+      const item = toCaseStudy(row, companyRow, index);
+      const images = caseImageUrls.get(row.id) ?? [];
+      return { ...item, image: images[0] ?? item.image, images: images.length ? images : undefined };
+    }),
     members: memberList,
   };
 }

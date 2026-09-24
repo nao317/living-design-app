@@ -341,14 +341,15 @@ begin
   end if;
 
   insert into public.companies (
-    name, description, address, phone, website_url, created_by
+    name, description, address, phone, website_url, created_by, status
   ) values (
     application_record.company_name,
     application_record.description,
     application_record.address,
     application_record.phone,
     nullif(application_record.website_url, ''),
-    application_record.applicant_id
+    application_record.applicant_id,
+    'PUBLISHED'
   ) returning id into created_company_id;
 
   update public.profiles
@@ -413,7 +414,7 @@ as $$
   select exists (
     select 1 from public.companies
     where id = target_company_id
-      and (status = 'PUBLISHED' or public.is_company_member(id))
+      and (status <> 'SUSPENDED' or public.is_company_member(id))
   );
 $$;
 
@@ -426,7 +427,7 @@ as $$
     join public.companies c on c.id = cc.company_id
     where cc.id = target_case_id
       and (
-        (cc.status = 'PUBLISHED' and c.status = 'PUBLISHED')
+        (cc.status = 'PUBLISHED' and c.status <> 'SUSPENDED')
         or public.is_company_member(cc.company_id)
       )
   );
@@ -528,7 +529,7 @@ using (public.is_platform_admin());
 
 drop policy if exists "companies_select_visible" on public.companies;
 create policy "companies_select_visible" on public.companies for select
-using (status = 'PUBLISHED' or public.is_company_member(id) or public.is_platform_admin());
+using (status <> 'SUSPENDED' or public.is_company_member(id) or public.is_platform_admin());
 
 drop policy if exists "companies_insert_authenticated" on public.companies;
 create policy "companies_insert_authenticated" on public.companies for insert to authenticated
@@ -659,6 +660,27 @@ on conflict (id) do update
 set public = excluded.public,
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
+
+-- Existing approved test companies were created as DRAFT before approval started
+-- assigning PUBLISHED. Make those companies visible after this setup is rerun.
+update public.companies c
+set status = 'PUBLISHED'
+where c.status = 'DRAFT'
+  and (
+    exists (
+      select 1
+      from public.company_members cm
+      join public.profiles p on p.id = cm.user_id
+      where cm.company_id = c.id
+        and p.account_role = 'COMPANY'
+    )
+    or exists (
+      select 1
+      from public.profiles p
+      where p.id = c.created_by
+        and p.account_role = 'COMPANY'
+    )
+  );
 
 drop policy if exists "company_assets_select_visible" on storage.objects;
 create policy "company_assets_select_visible" on storage.objects for select
