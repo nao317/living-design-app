@@ -1,7 +1,7 @@
 import { Filters } from "../components/organisms";
 import { SearchBar } from "../components/molecules";
 import { PublicLayout } from "../components/templates";
-import { images } from "../data/mock";
+import { media } from "../data/media";
 
 export function meta() {
   return [
@@ -14,7 +14,7 @@ export default function HomeRoute() {
   return (
     <PublicLayout>
       <div className="public-page home-page">
-        <section className="home-hero" style={{ backgroundImage: "url(" + images.house + ")" }}>
+        <section className="home-hero" style={{ backgroundImage: "url(" + media.house + ")" }}>
           <div>
             <h1>飯塚で理想のリフォーム＆<br />リノベーション</h1>
           </div>

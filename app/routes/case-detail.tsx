@@ -4,15 +4,24 @@ import { Link } from "react-router";
 import { Tag } from "../components/atoms";
 import { FavoriteButton } from "../components/molecules";
 import { PublicLayout } from "../components/templates";
-import { cases, images } from "../data/mock";
+import { fetchCaseById } from "../features/cases/public-data.client";
+import { media } from "../data/media";
+import type { CaseStudy } from "../features/cases/types";
 
-export function loader({ params }: Route.LoaderArgs) {
-  const item = cases.find((entry) => entry.id === params.caseId);
-  if (!item) throw new Response("施工事例が見つかりません", { status: 404 });
-  return { item };
+export function loader() {
+  return { item: null as CaseStudy | null };
 }
 
+export async function clientLoader({ params, serverLoader }: Route.ClientLoaderArgs) {
+  const item = params.caseId ? await fetchCaseById(params.caseId) : null;
+  if (!item) throw new Response("施工事例が見つかりません", { status: 404 });
+  return { ...(await serverLoader()), item };
+}
+
+clientLoader.hydrate = true as const;
+
 export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
+  if (!loaderData.item) return <PublicLayout><div className="public-page empty-state"><h1>施工事例が見つかりません</h1></div></PublicLayout>;
   const { item } = loaderData;
   return (
     <PublicLayout>
@@ -20,12 +29,12 @@ export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
         <Link to="/search" className="back-link"><ArrowLeft size={16} />検索結果へ戻る</Link>
         <div className="before-after">
           <figure><figcaption>AFTER</figcaption><img src={item.image} alt="施工後" /></figure>
-          <figure><figcaption>BEFORE</figcaption><img src={images.kitchenBefore} alt="施工前" /></figure>
+          <figure><figcaption>BEFORE</figcaption><img src={media.kitchenBefore} alt="施工前" /></figure>
         </div>
         <div className="case-detail-layout">
           <aside className="detail-thumbnails">
-            <img src={images.living} alt="施工箇所" />
-            <img src={images.house} alt="建物外観" />
+            <img src={media.living} alt="施工箇所" />
+            <img src={media.house} alt="建物外観" />
           </aside>
           <main className="case-detail-main">
             <div className="case-detail-title">
@@ -41,7 +50,7 @@ export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
           </main>
           <aside className="case-company">
             <h2><Building2 size={18} />{item.company}</h2>
-            <img src={images.office} alt={item.company} />
+            <img src={media.office} alt={item.company} />
             <Link className="button button--secondary" to={"/companies/" + item.companyId}>企業情報を見る</Link>
             <Link className="button button--primary" to={"/contact?caseId=" + item.id}>企業に問い合わせる</Link>
           </aside>

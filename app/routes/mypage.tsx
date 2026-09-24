@@ -2,18 +2,20 @@ import { Link } from "react-router";
 import { SearchBar } from "../components/molecules";
 import { CaseGrid } from "../components/organisms";
 import { DashboardLayout } from "../components/templates";
-import { cases } from "../data/mock";
 import type { Route } from "./+types/mypage";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
+import { fetchFavoriteCases, fetchPublishedCases } from "../features/cases/public-data.client";
+import type { CaseStudy } from "../features/cases/types";
 
 export function loader() {
-  return { newCases: cases, favoriteCases: cases.slice(0, 3) };
+  return { newCases: [] as CaseStudy[], favoriteCases: [] as CaseStudy[] };
 }
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
   await requireAuthorization(request, { role: "GENERAL" });
-  return serverLoader();
+  const [newCases, favoriteCases] = await Promise.all([fetchPublishedCases(), fetchFavoriteCases()]);
+  return { ...(await serverLoader()), newCases, favoriteCases };
 }
 
 clientLoader.hydrate = true as const;
