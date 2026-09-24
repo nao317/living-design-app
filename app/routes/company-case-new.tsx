@@ -40,7 +40,7 @@ export function HydrateFallback() {
 }
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
-  const context = await requireAuthorization(request, { role: "COMPANY" });
+  await requireAuthorization(request, { role: "COMPANY" });
   const formData = await request.formData();
   const result = caseSchema.safeParse(Object.fromEntries(formData));
   if (!result.success || parsePrice(result.data.priceMin) === undefined || parsePrice(result.data.priceMax) === undefined) {
@@ -53,39 +53,39 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     if (!companyId) return data({ error: "所属企業が見つかりません。" }, { status: 400 });
 
     const supabase = getSupabaseBrowserClient();
-    const { data: createdCase, error } = await supabase.from("construction_cases").insert({
-      company_id: companyId,
-      created_by: context.userId,
-      title: result.data.title,
-      summary: result.data.summary,
-      area: result.data.area,
-      construction_period: result.data.period,
-      price_min: parsePrice(result.data.priceMin),
-      price_max: parsePrice(result.data.priceMax),
-      status: "DRAFT",
-    }).select("id").single();
-    if (error) return data({ error: `施工事例を登録できませんでした。${error.message}` }, { status: error.code === "42501" ? 403 : 400 });
+    const { data: createdCaseId, error } = await supabase.rpc("create_construction_case", {
+      target_company_id: companyId,
+      case_title: result.data.title,
+      case_summary: result.data.summary,
+      case_area: result.data.area,
+      case_period: result.data.period,
+      target_price_min: parsePrice(result.data.priceMin),
+      target_price_max: parsePrice(result.data.priceMax),
+    });
+    if (error || typeof createdCaseId !== "string") {
+      return data({ error: "施工事例を登録できませんでした。企業アカウントの所属企業と権限を確認してください。" }, { status: error?.code === "42501" ? 403 : 400 });
+    }
 
     const files = formData.getAll("images").filter(isImageFile);
     const uploadedPaths: string[] = [];
     for (const file of files) {
-      const uploaded = await uploadImage("case-images", `${companyId}/${createdCase.id}`, file, 10 * 1024 * 1024);
+      const uploaded = await uploadImage("case-images", `${companyId}/${createdCaseId}`, file, 10 * 1024 * 1024);
       if (uploaded.error || !uploaded.path) {
         await removeImages("case-images", uploadedPaths);
-        await supabase.from("construction_cases").delete().eq("id", createdCase.id);
+        await supabase.from("construction_cases").delete().eq("id", createdCaseId);
         return data({ error: `施工事例の画像をアップロードできませんでした。${uploaded.error ?? ""}` }, { status: 400 });
       }
       uploadedPaths.push(uploaded.path);
     }
     if (uploadedPaths.length) {
       const { error: imageError } = await supabase.from("case_images").insert(uploadedPaths.map((storagePath, index) => ({
-        case_id: createdCase.id,
+        case_id: createdCaseId,
         storage_path: storagePath,
         display_order: index,
       })));
       if (imageError) {
         await removeImages("case-images", uploadedPaths);
-        await supabase.from("construction_cases").delete().eq("id", createdCase.id);
+        await supabase.from("construction_cases").delete().eq("id", createdCaseId);
         return data({ error: `施工事例の画像を保存できませんでした。${imageError.message}` }, { status: imageError.code === "42501" ? 403 : 400 });
       }
     }
