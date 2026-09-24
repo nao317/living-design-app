@@ -71,7 +71,7 @@ for (const viewport of [
   });
 }
 
-test("スマホではメニューが左、ブランドが右にあり、メニューを開ける", async ({ page }) => {
+test("スマホではブランドが左、メニューが右にあり、メニューを開ける", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
@@ -82,7 +82,7 @@ test("スマホではメニューが左、ブランドが右にあり、メニ�
 
   expect(menuBox).not.toBeNull();
   expect(brandBox).not.toBeNull();
-  expect(menuBox!.x).toBeLessThan(brandBox!.x);
+  expect(brandBox!.x).toBeLessThan(menuBox!.x);
 
   await menuButton.click();
   await expect(page.getByRole("navigation", { name: "メインメニュー" })).toBeVisible();
