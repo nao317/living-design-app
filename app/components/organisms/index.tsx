@@ -1,4 +1,4 @@
-import { Heart, Home, Menu, PencilLine, Plus, X } from "lucide-react";
+import { Heart, Home, House, Menu, PencilLine, Plus, Search, X } from "lucide-react";
 import { Form, Link, NavLink, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
@@ -6,19 +6,40 @@ import type { CaseStudy } from "../../data/mock";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../../lib/supabase.client";
 import { CaseCard, CaseListItem } from "../molecules";
 import { Button } from "../atoms";
+import { getAuthorizationContext, type AuthorizationContext } from "../../features/auth/authorization.client";
 
 export function Header() {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [authorization, setAuthorization] = useState<AuthorizationContext | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
 
     const supabase = getSupabaseBrowserClient();
-    void supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
+    async function refreshAuthorization(nextUser: User | null) {
+      if (!nextUser) {
+        setAuthorization(null);
+        return;
+      }
+
+      try {
+        setAuthorization(await getAuthorizationContext());
+      } catch {
+        setAuthorization(null);
+      }
+    }
+
+    void supabase.auth.getSession().then(({ data }) => {
+      const nextUser = data.session?.user ?? null;
+      setUser(nextUser);
+      void refreshAuthorization(nextUser);
+    });
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      const nextUser = session?.user ?? null;
+      setUser(nextUser);
+      void refreshAuthorization(nextUser);
     });
 
     return () => data.subscription.unsubscribe();
@@ -28,6 +49,7 @@ export function Header() {
     const supabase = getSupabaseBrowserClient();
     await supabase.auth.signOut();
     setOpen(false);
+    setAuthorization(null);
     navigate("/", { replace: true });
   }
 
@@ -35,7 +57,7 @@ export function Header() {
     <header className="site-header">
       <div className="site-header__inner">
         <Link to="/" className="brand" aria-label="飯塚のリノベ ホーム">
-          <Home size={25} fill="currentColor" />
+          <House size={25} strokeWidth={2.25} aria-hidden="true" />
           <span>飯塚のリノベ</span>
         </Link>
         <nav id="site-navigation" className={open ? "header-nav is-open" : "header-nav"} aria-label="メインメニュー" onClick={() => setOpen(false)}>
@@ -44,7 +66,9 @@ export function Header() {
           <Link to="/contact">お問い合わせ</Link>
           {user ? (
             <>
-              <Link to="/mypage">マイページ</Link>
+              {authorization?.accountRole === "ADMIN" ? <Link to="/admin">管理画面</Link> : null}
+              {authorization?.accountRole === "COMPANY" ? <Link to="/company">企業管理</Link> : null}
+              {authorization?.accountRole === "GENERAL" ? <Link to="/mypage">マイページ</Link> : null}
               <button type="button" className="header-login" onClick={handleLogout}>ログアウト</button>
             </>
           ) : (
@@ -66,20 +90,25 @@ export function Header() {
   );
 }
 
-export function Sidebar({ type = "user" }: { type?: "user" | "company" }) {
+export function Sidebar({ type = "user" }: { type?: "user" | "company" | "admin" }) {
   const links = type === "company"
     ? [
         ["/company", "ダッシュボード", Home],
         ["/company/profile/edit", "企業情報の編集", PencilLine],
         ["/company/cases/new", "施工事例の追加", Plus],
       ] as const
-    : [
-        ["/mypage", "ダッシュボード", Home],
-        ["/mypage/favorites", "お気に入り", Heart],
-      ] as const;
+    : type === "admin"
+      ? [
+          ["/admin", "管理画面", Home],
+          ["/search", "公開事例", Search],
+        ] as const
+      : [
+          ["/mypage", "ダッシュボード", Home],
+          ["/mypage/favorites", "お気に入り", Heart],
+        ] as const;
 
   return (
-    <aside className="sidebar" aria-label={type === "company" ? "企業メニュー" : "マイページメニュー"}>
+    <aside className="sidebar" aria-label={type === "company" ? "企業メニュー" : type === "admin" ? "管理者メニュー" : "マイページメニュー"}>
       <nav>
         {links.map(([href, label, Icon]) => (
           <NavLink key={href} to={href} end><Icon size={16} />{label}</NavLink>

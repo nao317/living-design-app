@@ -8,7 +8,7 @@ Supabase Dashboardの「SQL Editor」で supabase/setup.sql の全内容を実�
 
 SQLには次の内容が含まれます。
 
-- プロフィール、企業、企業メンバー、施工事例、カテゴリ、スタイル、お気に入り
+- プロフィール、企業、企業メンバー、企業申請、施工事例、カテゴリ、スタイル、お気に入り
 - Authユーザー作成時のプロフィール自動生成
 - updated_at の自動更新
 - 一般ユーザー／企業メンバー／管理者向けのRLS
@@ -16,6 +16,19 @@ SQLには次の内容が含まれます。
 
 企業を作成したユーザーには、SQL内のトリガーが company_members の OWNER 権限を自動付与します。
 Service Role Keyをブラウザへ公開してはいけません。
+
+一般ユーザーは `/company/apply` から企業申請を送り、管理者が `/admin` で承認すると企業アカウントへ変更されます。管理者がユーザーを企業ロールへ変更する場合は所属企業も指定します。企業ユーザーは所属企業の情報と施工事例だけを編集でき、管理者は全ユーザーと全施工事例を管理できます。企業・管理者ロールではお気に入りのRLS操作も拒否されます。
+
+全体管理者には `nao.yellowtail.1729@gmail.com` を設定します。既存ユーザーへ反映する場合は、Supabase SQL Editorで次を実行してください。一般ユーザーが自分で管理者へ昇格できないよう、通常のプロフィール更新では `account_role` を変更できません。
+
+```sql
+update public.profiles
+set account_role = 'ADMIN'
+where id in (
+  select id from auth.users
+  where lower(email) = lower('nao.yellowtail.1729@gmail.com')
+);
+```
 
 ## 2. アプリの接続情報を設定する
 

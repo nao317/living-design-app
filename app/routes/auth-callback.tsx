@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { resolveAuthCallbackRedirectTo } from "../features/auth/redirect";
+import { resolvePostLoginRedirect } from "../features/auth/authorization.client";
 import { getSupabaseBrowserClient } from "../lib/supabase.client";
 
 export function meta() {
@@ -21,7 +22,7 @@ export default function AuthCallbackRoute() {
         const supabase = getSupabaseBrowserClient();
         const { data, error: sessionError } = await supabase.auth.getSession();
         if (sessionError || !data.session) throw sessionError ?? new Error("Session was not created");
-        if (active) navigate(redirectTo, { replace: true });
+        if (active) navigate(await resolvePostLoginRedirect(redirectTo), { replace: true });
       } catch {
         if (active) setError("認証を完了できませんでした。もう一度ログインしてください。");
       }

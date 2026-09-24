@@ -1,6 +1,7 @@
 import { redirect } from "react-router";
 import { z } from "zod";
 import { getSupabaseBrowserClient } from "../../lib/supabase.client";
+import { resolvePostLoginRedirect } from "./authorization.client";
 import { rememberAuthRedirectTo, safeRedirectTo } from "./redirect";
 
 const credentialsSchema = z.object({
@@ -45,7 +46,7 @@ export async function handleAuthAction(request: Request, mode: "login" | "signup
     if (mode === "login") {
       const { error } = await supabase.auth.signInWithPassword(result.data);
       if (error) return { error: getAuthErrorMessage(error) };
-      throw redirect(redirectTo);
+      throw redirect(await resolvePostLoginRedirect(redirectTo));
     }
 
     rememberAuthRedirectTo(redirectTo);
@@ -56,7 +57,7 @@ export async function handleAuthAction(request: Request, mode: "login" | "signup
     });
 
     if (error) return { error: getAuthErrorMessage(error) };
-    if (data.session) throw redirect(redirectTo);
+    if (data.session) throw redirect(await resolvePostLoginRedirect(redirectTo));
 
     return { message: "確認メールを送信しました。メール内のリンクから登録を完了してください。" };
   } catch (error) {
