@@ -14,6 +14,7 @@ import { getSignedImageUrl, isImageFile, removeImages, uploadImage } from "../fe
 
 const profileSchema = z.object({
   name: z.string().trim().min(1).max(120),
+  email: z.email().or(z.literal("")),
   founded: z.string().trim(),
   phone: z.string().trim().max(40),
   website: z.url().or(z.literal("")),
@@ -70,6 +71,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
     const { error } = await supabase.from("companies").update({
         name: result.data.name,
+        email: result.data.email,
         founded_year: foundedYear ? Number(foundedYear) : null,
         phone: result.data.phone,
         website_url: result.data.website || null,
@@ -107,7 +109,7 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
 
   const supabase = getSupabaseBrowserClient();
   const { data: record, error } = await supabase.from("companies")
-    .select("name, founded_year, phone, website_url, address, business_hours, description, logo_path, cover_image_path")
+    .select("name, email, founded_year, phone, website_url, address, business_hours, description, logo_path, cover_image_path")
     .eq("id", companyId)
     .maybeSingle();
   if (error) throw error;
@@ -126,6 +128,7 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
         features: [],
       }),
       name: record.name,
+      email: record.email,
       founded: record.founded_year ? `${record.founded_year}年` : "",
       phone: record.phone,
       website: record.website_url ?? "",
@@ -170,6 +173,7 @@ export default function CompanyProfileEditRoute({ loaderData, actionData }: Rout
           <h2>企業情報</h2>
           <div className="form-grid">
             <Field label="企業名"><input name="name" defaultValue={loaderData.company.name} /></Field>
+            <Field label="問い合わせ先メールアドレス"><input name="email" type="email" defaultValue={loaderData.company.email} /></Field>
             <Field label="設立年"><input name="founded" defaultValue={loaderData.company.founded} /></Field>
             <Field label="電話番号"><input name="phone" defaultValue={loaderData.company.phone} /></Field>
             <Field label="ホームページ"><input name="website" defaultValue={loaderData.company.website} /></Field>

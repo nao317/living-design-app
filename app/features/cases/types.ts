@@ -4,6 +4,7 @@ export type CaseStudy = {
   company: string;
   companyId: string;
   companyAddress?: string;
+  companyImage?: string;
   image: string;
   area: string;
   price: string;
@@ -11,11 +12,18 @@ export type CaseStudy = {
   categories: string[];
   summary: string;
   images?: string[];
+  priceMin?: number | null;
+  priceMax?: number | null;
+  periodMonths?: number | null;
+  styles?: string[];
+  categorySlugs?: string[];
+  styleSlugs?: string[];
 };
 
 export type CompanyProfile = {
   id: string;
   name: string;
+  email: string;
   address: string;
   phone: string;
   founded: string;
@@ -35,4 +43,22 @@ export type CompanyMember = {
   name: string;
   role: string;
   email: string;
+};
+
+export type CompanyContactOption = {
+  id: string;
+  name: string;
+};
+
+export type ContactMessage = {
+  id: string;
+  companyId: string;
+  senderName: string;
+  senderEmail: string;
+  subject: string;
+  message: string;
+  caseId?: string;
+  status: "NEW" | "READ" | "ARCHIVED";
+  createdAt: string;
+  readAt?: string;
 };

@@ -25,12 +25,21 @@ function parsePrice(value: string) {
 }
 
 export function loader() {
-  return null;
+  return { categories: [] as Array<{ id: string; name: string }>, styles: [] as Array<{ id: string; name: string }> };
 }
 
-export async function clientLoader({ request }: Route.ClientLoaderArgs) {
+export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
   await requireAuthorization(request, { role: "COMPANY" });
-  return null;
+  const serverData = await serverLoader();
+  if (!isSupabaseConfigured()) return serverData;
+  const supabase = getSupabaseBrowserClient();
+  const [{ data: categories, error: categoriesError }, { data: styles, error: stylesError }] = await Promise.all([
+    supabase.from("categories").select("id, name").order("display_order"),
+    supabase.from("styles").select("id, name").order("display_order"),
+  ]);
+  if (categoriesError) throw categoriesError;
+  if (stylesError) throw stylesError;
+  return { ...serverData, categories: categories ?? [], styles: styles ?? [] };
 }
 
 clientLoader.hydrate = true as const;
@@ -66,6 +75,23 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       return data({ error: "施工事例を登録できませんでした。企業アカウントの所属企業と権限を確認してください。" }, { status: error?.code === "42501" ? 403 : 400 });
     }
 
+    const categoryIds = formData.getAll("categoryIds").filter((value): value is string => typeof value === "string" && value.length > 0);
+    const styleIds = formData.getAll("styleIds").filter((value): value is string => typeof value === "string" && value.length > 0);
+    if (categoryIds.length) {
+      const { error: categoryError } = await supabase.from("case_categories").insert(categoryIds.map((categoryId) => ({ case_id: createdCaseId, category_id: categoryId })));
+      if (categoryError) {
+        await supabase.from("construction_cases").delete().eq("id", createdCaseId);
+        return data({ error: "施工箇所を保存できませんでした。" }, { status: 400 });
+      }
+    }
+    if (styleIds.length) {
+      const { error: styleError } = await supabase.from("case_styles").insert(styleIds.map((styleId) => ({ case_id: createdCaseId, style_id: styleId })));
+      if (styleError) {
+        await supabase.from("construction_cases").delete().eq("id", createdCaseId);
+        return data({ error: "こだわり条件を保存できませんでした。" }, { status: 400 });
+      }
+    }
+
     const files = formData.getAll("images").filter(isImageFile);
     const uploadedPaths: string[] = [];
     for (const file of files) {
@@ -94,7 +120,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   return data({ saved: true });
 }
 
-export default function CompanyCaseNewRoute({ actionData }: Route.ComponentProps) {
+export default function CompanyCaseNewRoute({ loaderData, actionData }: Route.ComponentProps) {
   return (
     <DashboardLayout type="company">
       <header className="page-heading"><h1>施工事例の追加</h1><p>自社の施工事例を登録します。</p></header>
@@ -110,6 +136,8 @@ export default function CompanyCaseNewRoute({ actionData }: Route.ComponentProps
             <Field label="費用上限"><input name="priceMax" type="number" min="0" inputMode="numeric" /></Field>
           </div>
           <Field label="概要"><textarea name="summary" rows={5} maxLength={2000} /></Field>
+          <fieldset className="choice-list"><legend>リノベーション箇所</legend>{loaderData.categories.map((category) => <label key={category.id}><input type="checkbox" name="categoryIds" value={category.id} />{category.name}</label>)}</fieldset>
+          <fieldset className="choice-list"><legend>こだわり条件</legend>{loaderData.styles.map((style) => <label key={style.id}><input type="checkbox" name="styleIds" value={style.id} />{style.name}</label>)}</fieldset>
           <Field label="施工写真"><input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple /></Field>
           <div className="form-actions"><Button type="submit">登録する</Button></div>
         </section>

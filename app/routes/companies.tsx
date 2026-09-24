@@ -43,7 +43,7 @@ export default function CompaniesRoute({ loaderData }: Route.ComponentProps) {
             <div className="company-directory">
               {loaderData.items.map((company) => (
                 <article className="company-directory__item" key={company.id}>
-                  <img src={company.image} alt="" />
+                  {company.image ? <img src={company.image} alt="" /> : <div className="image-empty">企業画像未登録</div>}
                   <div>
                     <h2>{company.name}</h2>
                     <p>{company.description}</p>

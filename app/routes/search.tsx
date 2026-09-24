@@ -22,9 +22,21 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
   const serverData = await serverLoader();
   const items = await fetchPublishedCases();
   const filters = searchParamsSchema.parse(Object.fromEntries(new URL(request.url).searchParams));
-  const filtered = filters.q
-    ? items.filter((item) => [item.title, item.company, item.companyAddress, item.area, ...item.categories].filter(Boolean).join(" ").includes(filters.q))
-    : items;
+  const normalizedQuery = filters.q.toLocaleLowerCase("ja-JP");
+  const filtered = items.filter((item) => {
+    const searchableText = [item.title, item.company, item.companyAddress, item.area, ...item.categories, ...(item.styles ?? [])]
+      .filter(Boolean)
+      .join(" ")
+      .toLocaleLowerCase("ja-JP");
+    const matchesQuery = !normalizedQuery || searchableText.includes(normalizedQuery);
+    const matchesCategory = !filters.category || item.categorySlugs?.includes(filters.category);
+    const matchesStyle = !filters.style || item.styleSlugs?.includes(filters.style);
+    const hasPrice = item.priceMin !== null && item.priceMin !== undefined || item.priceMax !== null && item.priceMax !== undefined;
+    const matchesMinPrice = filters.priceMin === undefined || (hasPrice && (item.priceMax === null || item.priceMax === undefined || item.priceMax >= filters.priceMin));
+    const matchesMaxPrice = filters.priceMax === undefined || (hasPrice && (item.priceMin === null || item.priceMin === undefined || item.priceMin <= filters.priceMax));
+    const matchesPeriod = !filters.period || (item.periodMonths !== null && item.periodMonths !== undefined && item.periodMonths <= Number(filters.period));
+    return matchesQuery && matchesCategory && matchesStyle && matchesMinPrice && matchesMaxPrice && matchesPeriod;
+  });
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const page = Math.min(filters.page, totalPages);
   return { ...serverData, items: filtered.slice((page - 1) * pageSize, page * pageSize), filters: { ...filters, page }, total: filtered.length };

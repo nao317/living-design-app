@@ -30,7 +30,7 @@ export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps)
             <p>{loaderData.company.description}</p>
             <div>{loaderData.company.features.map((feature) => <Tag key={feature}>{feature}</Tag>)}</div>
           </div>
-          <img src={loaderData.company.image} alt={loaderData.company.name} />
+          {loaderData.company.image ? <img src={loaderData.company.image} alt={loaderData.company.name} /> : <div className="image-empty">企業画像未登録</div>}
         </section>
         <div className="company-detail-body">
           <section className="company-works">
