@@ -685,6 +685,14 @@ where c.status = 'DRAFT'
     )
   );
 
+-- Repair ownership for companies created by an existing COMPANY profile.
+insert into public.company_members (company_id, user_id, role)
+select c.id, c.created_by, 'OWNER'::public.company_member_role
+from public.companies c
+join public.profiles p on p.id = c.created_by
+where p.account_role = 'COMPANY'
+on conflict (company_id, user_id) do nothing;
+
 drop policy if exists "company_assets_select_visible" on storage.objects;
 create policy "company_assets_select_visible" on storage.objects for select
 using (
