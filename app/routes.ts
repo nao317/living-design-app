@@ -10,6 +10,7 @@ export default [
   route("auth/callback", "routes/auth-callback.tsx"),
   route("admin", "routes/admin-dashboard.tsx"),
   route("admin/cases/:caseId/edit", "routes/admin-case-edit.tsx"),
+  route("companies", "routes/companies.tsx"),
   route("mypage", "routes/mypage.tsx"),
   route("mypage/favorites", "routes/favorites.tsx"),
   route("company", "routes/company-dashboard.tsx"),

@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test";
 const pages = [
   ["/", "飯塚で理想のリフォーム＆"],
   ["/search", "検索結果"],
+  ["/companies", "企業を探す"],
   ["/contact", "お問い合わせ"],
   ["/login", "ログイン"],
   ["/signup", "新規登録"],
@@ -103,6 +104,13 @@ test("お問い合わせページは共通ヘッダーだけを使い、サイ�
 
   await expect(page.getByRole("navigation", { name: "メインメニュー" })).toBeVisible();
   await expect(page.locator("aside.sidebar")).toHaveCount(0);
+});
+
+test("企業を探すリンクは企業一覧へ遷移する", async ({ page }) => {
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.getByRole("link", { name: "企業を探す" }).click();
+  await expect(page).toHaveURL(/\/companies$/);
+  await expect(page.getByRole("heading", { name: "企業を探す" })).toBeVisible();
 });
 
 test("未認証では企業ダッシュボードからログインへ誘導する", async ({ page }) => {
