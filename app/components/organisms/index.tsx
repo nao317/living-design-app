@@ -45,6 +45,15 @@ export function Header() {
     return () => data.subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
   async function handleLogout() {
     const supabase = getSupabaseBrowserClient();
     await supabase.auth.signOut();
@@ -60,6 +69,7 @@ export function Header() {
           <House size={25} strokeWidth={2.25} aria-hidden="true" />
           <span>飯塚のリノベ</span>
         </Link>
+        {open ? <button type="button" className="menu-backdrop" aria-label="メニューの外側をクリックして閉じる" onClick={() => setOpen(false)} /> : null}
         <nav id="site-navigation" className={open ? "header-nav is-open" : "header-nav"} aria-label="メインメニュー" onClick={() => setOpen(false)}>
           <Link to="/search">施工事例を探す</Link>
           <Link to="/companies">企業を探す</Link>
