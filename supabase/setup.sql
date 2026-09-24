@@ -46,6 +46,7 @@ alter table public.profiles
 create table if not exists public.companies (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(name) between 1 and 120),
+  email text not null default '',
   description text not null default '',
   address text not null default '',
   phone text not null default '',
@@ -59,6 +60,9 @@ create table if not exists public.companies (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.companies
+  add column if not exists email text not null default '';
 
 create table if not exists public.company_members (
   company_id uuid not null references public.companies(id) on delete cascade,
@@ -151,6 +155,20 @@ create table if not exists public.favorites (
   primary key (user_id, case_id)
 );
 
+create table if not exists public.contact_messages (
+  id uuid primary key default gen_random_uuid(),
+  company_id uuid not null references public.companies(id) on delete cascade,
+  sender_name text not null check (char_length(sender_name) between 1 and 80),
+  sender_email text not null check (char_length(sender_email) between 3 and 320),
+  subject text not null check (char_length(subject) between 1 and 120),
+  message text not null check (char_length(message) between 10 and 2000),
+  case_id uuid references public.construction_cases(id) on delete set null,
+  status text not null default 'NEW' check (status in ('NEW', 'READ', 'ARCHIVED')),
+  read_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index if not exists companies_status_idx on public.companies (status);
 create index if not exists company_members_user_id_idx on public.company_members (user_id);
 create index if not exists company_applications_status_idx on public.company_applications (status, created_at desc);
@@ -160,6 +178,10 @@ create index if not exists company_service_areas_location_idx on public.company_
 create index if not exists construction_cases_company_status_idx on public.construction_cases (company_id, status);
 create index if not exists construction_cases_published_at_idx
   on public.construction_cases (published_at desc) where status = 'PUBLISHED';
+create index if not exists contact_messages_company_created_idx
+  on public.contact_messages (company_id, created_at desc);
+create index if not exists contact_messages_company_unread_idx
+  on public.contact_messages (company_id, status) where status = 'NEW';
 create index if not exists case_images_case_order_idx on public.case_images (case_id, display_order);
 create index if not exists favorites_case_id_idx on public.favorites (case_id);
 
@@ -184,7 +206,11 @@ for each row execute function public.set_updated_at();
 
 drop trigger if exists construction_cases_set_updated_at on public.construction_cases;
 create trigger construction_cases_set_updated_at before update on public.construction_cases
-for each row execute function public.set_updated_at();
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists contact_messages_set_updated_at on public.contact_messages;
+create trigger contact_messages_set_updated_at before update on public.contact_messages
+  for each row execute function public.set_updated_at();
 
 create or replace function public.prevent_account_role_escalation()
 returns trigger
@@ -344,9 +370,10 @@ begin
   end if;
 
   insert into public.companies (
-    name, description, address, phone, website_url, created_by, status
+    name, email, description, address, phone, website_url, created_by, status
   ) values (
     application_record.company_name,
+    coalesce((select email from auth.users where id = application_record.applicant_id), ''),
     application_record.description,
     application_record.address,
     application_record.phone,
@@ -507,6 +534,31 @@ begin
 end;
 $$;
 
+create or replace function public.mark_contact_message_read(target_message_id uuid)
+returns void language plpgsql security definer set search_path = ''
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'authentication required';
+  end if;
+
+  update public.contact_messages message
+  set status = 'READ', read_at = coalesce(message.read_at, now()), updated_at = now()
+  where message.id = target_message_id
+    and (
+      public.has_company_role(
+        message.company_id,
+        array['OWNER', 'ADMIN', 'EDITOR']::public.company_member_role[]
+      )
+      or public.is_platform_admin()
+    );
+
+  if not found then
+    raise exception 'contact message access denied';
+  end if;
+end;
+$$;
+
 revoke all on function public.is_company_member(uuid) from public;
 revoke all on function public.has_company_role(uuid, public.company_member_role[]) from public;
 revoke all on function public.shares_company_with(uuid) from public;
@@ -520,6 +572,7 @@ revoke all on function public.create_construction_case(uuid, text, text, text, t
 revoke all on function public.set_account_role(uuid, public.account_role, uuid) from public;
 revoke all on function public.approve_company_application(uuid) from public;
 revoke all on function public.reject_company_application(uuid) from public;
+revoke all on function public.mark_contact_message_read(uuid) from public;
 
 grant execute on function public.is_company_member(uuid) to anon, authenticated;
 grant execute on function public.has_company_role(uuid, public.company_member_role[]) to authenticated;
@@ -534,6 +587,7 @@ grant execute on function public.set_account_role(uuid, public.account_role, uui
 grant execute on function public.create_construction_case(uuid, text, text, text, text, integer, integer) to authenticated;
 grant execute on function public.approve_company_application(uuid) to authenticated;
 grant execute on function public.reject_company_application(uuid) to authenticated;
+grant execute on function public.mark_contact_message_read(uuid) to authenticated;
 
 alter table public.profiles enable row level security;
 alter table public.companies enable row level security;
@@ -547,6 +601,7 @@ alter table public.styles enable row level security;
 alter table public.case_categories enable row level security;
 alter table public.case_styles enable row level security;
 alter table public.favorites enable row level security;
+alter table public.contact_messages enable row level security;
 
 drop policy if exists "profiles_select_related" on public.profiles;
 create policy "profiles_select_related" on public.profiles for select
@@ -687,6 +742,40 @@ with check (user_id = auth.uid() and public.current_account_role() = 'GENERAL' a
 drop policy if exists "favorites_delete_self" on public.favorites;
 create policy "favorites_delete_self" on public.favorites for delete to authenticated
 using (user_id = auth.uid() and public.current_account_role() = 'GENERAL');
+
+drop policy if exists "contact_messages_insert_public" on public.contact_messages;
+create policy "contact_messages_insert_public" on public.contact_messages for insert to anon, authenticated
+with check (
+  exists (
+    select 1
+    from public.companies company
+    where company.id = public.contact_messages.company_id
+      and company.status <> 'SUSPENDED'
+  )
+  and (
+    public.contact_messages.case_id is null
+    or exists (
+      select 1
+      from public.construction_cases construction_case
+      where construction_case.id = public.contact_messages.case_id
+        and construction_case.company_id = public.contact_messages.company_id
+    )
+  )
+);
+
+drop policy if exists "contact_messages_select_company" on public.contact_messages;
+create policy "contact_messages_select_company" on public.contact_messages for select to authenticated
+using (
+  public.has_company_role(
+    company_id,
+    array['OWNER', 'ADMIN', 'EDITOR']::public.company_member_role[]
+  )
+  or public.is_platform_admin()
+);
+
+drop policy if exists "contact_messages_delete_admin" on public.contact_messages;
+create policy "contact_messages_delete_admin" on public.contact_messages for delete to authenticated
+using (public.is_platform_admin());
 
 insert into public.categories (slug, name, display_order)
 values
