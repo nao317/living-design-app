@@ -1,26 +1,32 @@
 import type { Route } from "./+types/companies";
 import { Link } from "react-router";
-import { Pagination } from "../components/molecules";
+import { CompanySearchBar, Pagination } from "../components/molecules";
 import { PublicLayout } from "../components/templates";
 import { fetchPublishedCompanies } from "../features/cases/public-data.client";
 import type { CompanySummary } from "../features/cases/types";
 
 const pageSize = 12;
 
-export function loader() {
-  return { items: [] as CompanySummary[], total: 0, page: 1 };
+export function loader({ request }: Route.LoaderArgs) {
+  return { items: [] as CompanySummary[], total: 0, page: 1, query: new URL(request.url).searchParams.get("q")?.trim() ?? "" };
 }
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
   const companies = await fetchPublishedCompanies();
-  const requestedPage = Number(new URL(request.url).searchParams.get("page") ?? "1");
-  const totalPages = Math.max(1, Math.ceil(companies.length / pageSize));
+  const params = new URL(request.url).searchParams;
+  const query = params.get("q")?.trim() ?? "";
+  const filtered = query
+    ? companies.filter((company) => [company.name, company.address, company.description].join(" ").includes(query))
+    : companies;
+  const requestedPage = Number(params.get("page") ?? "1");
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const page = Number.isInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
   return {
     ...(await serverLoader()),
-    items: companies.slice((page - 1) * pageSize, page * pageSize),
-    total: companies.length,
+    items: filtered.slice((page - 1) * pageSize, page * pageSize),
+    total: filtered.length,
     page,
+    query,
   };
 }
 
@@ -31,6 +37,7 @@ export default function CompaniesRoute({ loaderData }: Route.ComponentProps) {
     <PublicLayout>
       <div className="public-page companies-page">
         <header className="page-heading"><h1>企業を探す</h1><p>{loaderData.total}件の登録企業</p></header>
+        <CompanySearchBar defaultValue={loaderData.query} />
         {loaderData.items.length ? (
           <>
             <div className="company-directory">

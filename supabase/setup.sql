@@ -309,6 +309,9 @@ begin
     if not exists (select 1 from public.companies where id = target_company_id) then
       raise exception 'target company does not exist';
     end if;
+    update public.companies
+    set status = 'PUBLISHED'
+    where id = target_company_id and status <> 'SUSPENDED';
     insert into public.company_members (company_id, user_id, role)
     values (target_company_id, target_user_id, 'EDITOR')
     on conflict (company_id, user_id) do nothing;

@@ -23,7 +23,7 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
   const items = await fetchPublishedCases();
   const filters = searchParamsSchema.parse(Object.fromEntries(new URL(request.url).searchParams));
   const filtered = filters.q
-    ? items.filter((item) => [item.title, item.company, item.area, ...item.categories].join(" ").includes(filters.q))
+    ? items.filter((item) => [item.title, item.company, item.companyAddress, item.area, ...item.categories].filter(Boolean).join(" ").includes(filters.q))
     : items;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const page = Math.min(filters.page, totalPages);

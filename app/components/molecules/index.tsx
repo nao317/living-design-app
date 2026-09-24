@@ -21,6 +21,21 @@ export function SearchBar({ defaultValue = "" }: { defaultValue?: string }) {
   );
 }
 
+export function CompanySearchBar({ defaultValue = "" }: { defaultValue?: string }) {
+  return (
+    <Form className="search-bar company-search-bar" method="get" action="/companies">
+      <Search size={18} aria-hidden="true" />
+      <input
+        name="q"
+        aria-label="企業名や所在地を検索"
+        placeholder="企業名や所在地から検索"
+        defaultValue={defaultValue}
+      />
+      <Button type="submit">検索</Button>
+    </Form>
+  );
+}
+
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <label className="field">
