@@ -2,7 +2,7 @@ import { Building2, Heart, MapPin, Search } from "lucide-react";
 import { Form, Link } from "react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "../atoms";
-import type { CaseStudy } from "../../data/mock";
+import type { CaseStudy } from "../../features/cases/types";
 import { getAuthorizationContext } from "../../features/auth/authorization.client";
 import { isSupabaseConfigured } from "../../lib/supabase.client";
 

@@ -3,7 +3,6 @@ import { data, Form, Link } from "react-router";
 import { z } from "zod";
 import { Button } from "../components/atoms";
 import { DashboardLayout } from "../components/templates";
-import { cases, company, members } from "../data/mock";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { getSupabaseBrowserClient } from "../lib/supabase.client";
@@ -30,7 +29,7 @@ type AdminCase = { id: string; title: string; status: string; company_id: string
 const roleSchema = z.enum(["GENERAL", "COMPANY", "ADMIN"]);
 
 export function loader() {
-  return { company, cases, members, users: [], companies: [], applications: [], posts: [] as AdminCase[] };
+  return { users: [], companies: [], applications: [], posts: [] as AdminCase[] };
 }
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {

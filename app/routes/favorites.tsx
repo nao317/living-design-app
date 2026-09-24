@@ -1,18 +1,19 @@
 import { CaseList } from "../components/organisms";
 import { Pagination } from "../components/molecules";
 import { DashboardLayout } from "../components/templates";
-import { cases } from "../data/mock";
 import type { Route } from "./+types/favorites";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
+import { fetchFavoriteCases } from "../features/cases/public-data.client";
+import type { CaseStudy } from "../features/cases/types";
 
 export function loader() {
-  return { items: cases };
+  return { items: [] as CaseStudy[] };
 }
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
   await requireAuthorization(request, { role: "GENERAL" });
-  return serverLoader();
+  return { ...(await serverLoader()), items: await fetchFavoriteCases() };
 }
 
 clientLoader.hydrate = true as const;

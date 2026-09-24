@@ -2,18 +2,22 @@ import { Link } from "react-router";
 import { Avatar } from "../components/atoms";
 import { CaseGrid } from "../components/organisms";
 import { DashboardLayout } from "../components/templates";
-import { cases, company, members } from "../data/mock";
 import type { Route } from "./+types/company-dashboard";
-import { requireAuthorization } from "../features/auth/authorization.client";
+import { getAuthorizationContext, requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
+import { fetchManagedCompany } from "../features/cases/public-data.client";
+import type { CaseStudy, CompanyMember, CompanyProfile } from "../features/cases/types";
 
 export function loader() {
-  return { company, cases, members };
+  return { company: null as CompanyProfile | null, cases: [] as CaseStudy[], members: [] as CompanyMember[] };
 }
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
   await requireAuthorization(request, { role: "COMPANY" });
-  return serverLoader();
+  const context = await getAuthorizationContext();
+  const companyId = context?.memberships[0]?.companyId;
+  const managed = companyId ? await fetchManagedCompany(companyId) : null;
+  return { ...(await serverLoader()), ...(managed ?? {}) };
 }
 
 clientLoader.hydrate = true as const;
@@ -23,6 +27,8 @@ export function HydrateFallback() {
 }
 
 export default function CompanyDashboardRoute({ loaderData }: { loaderData: ReturnType<typeof loader> }) {
+  if (!loaderData.company) return <DashboardLayout type="company"><div className="empty-state"><h1>企業情報が見つかりません</h1></div></DashboardLayout>;
+
   return (
     <DashboardLayout type="company">
       <header className="company-summary">

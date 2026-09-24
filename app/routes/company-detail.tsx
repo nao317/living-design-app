@@ -3,14 +3,24 @@ import { ExternalLink } from "lucide-react";
 import { Link } from "react-router";
 import { Tag } from "../components/atoms";
 import { PublicLayout } from "../components/templates";
-import { cases, company } from "../data/mock";
+import { fetchCompanyById } from "../features/cases/public-data.client";
+import type { CompanyProfile } from "../features/cases/types";
 
-export function loader({ params }: Route.LoaderArgs) {
-  if (params.companyId !== company.id) throw new Response("企業が見つかりません", { status: 404 });
-  return { company, cases: cases.filter((item) => item.companyId === params.companyId) };
+export function loader() {
+  return { company: null as CompanyProfile | null, cases: [] };
 }
 
+export async function clientLoader({ params, serverLoader }: Route.ClientLoaderArgs) {
+  const result = params.companyId ? await fetchCompanyById(params.companyId) : null;
+  if (!result) throw new Response("企業が見つかりません", { status: 404 });
+  return { ...(await serverLoader()), ...result };
+}
+
+clientLoader.hydrate = true as const;
+
 export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps) {
+  if (!loaderData.company) return <PublicLayout><div className="public-page empty-state"><h1>企業が見つかりません</h1></div></PublicLayout>;
+
   return (
     <PublicLayout>
       <article className="public-page company-detail-page">

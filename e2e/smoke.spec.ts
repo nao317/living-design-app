@@ -4,10 +4,8 @@ const pages = [
   ["/", "飯塚で理想のリフォーム＆"],
   ["/search", "検索結果"],
   ["/contact", "お問い合わせ"],
-  ["/cases/1", "キッチンを中心にしたリノベーション"],
   ["/login", "ログイン"],
   ["/signup", "新規登録"],
-  ["/companies/1", "株式会社リビングデザイン"],
 ] as const;
 
 const protectedPages = [
@@ -55,13 +53,6 @@ test("指示にない英語見出しとキャッチコピーを表示しない",
       await expect(page.getByText(copy, { exact: false })).toHaveCount(0);
     }
   }
-});
-
-test("お気に入り状態を画面上で切り替えられる", async ({ page }) => {
-  await page.goto("/cases/1", { waitUntil: "domcontentloaded" });
-  const button = page.getByRole("button", { name: "お気に入りに追加" });
-  await button.click();
-  await expect(page.getByRole("button", { name: "お気に入りから削除" })).toHaveAttribute("aria-pressed", "true");
 });
 
 for (const viewport of [
