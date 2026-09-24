@@ -24,6 +24,8 @@ export type CompanyProfile = {
   features: string[];
 };
 
+export type CompanySummary = Pick<CompanyProfile, "id" | "name" | "address" | "description" | "image">;
+
 export type CompanyMember = {
   id: string;
   name: string;
