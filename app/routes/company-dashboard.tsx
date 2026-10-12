@@ -1,12 +1,13 @@
 import { data, Form, Link } from "react-router";
 import { z } from "zod";
-import { Avatar } from "../components/atoms";
-import { CaseGrid } from "../components/organisms";
+import { Avatar, Button } from "../components/atoms";
+import { CaseCard } from "../components/molecules";
 import { DashboardLayout } from "../components/templates";
 import type { Route } from "./+types/company-dashboard";
 import { getAuthorizationContext, requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { StorageImage } from "../features/media/storage-image";
+import { removeImages } from "../features/media/image-storage.client";
 import { fetchManagedCompany } from "../features/cases/public-data.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 import type { CaseStudy, CompanyMember, CompanyProfile, ContactMessage } from "../features/cases/types";
@@ -26,8 +27,38 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
 clientLoader.hydrate = true as const;
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
-  await requireAuthorization(request, { role: "COMPANY" });
+  const context = await requireAuthorization(request, { role: "COMPANY" });
   const formData = await request.formData();
+  if (formData.get("intent") === "delete-case") {
+    const caseId = z.uuid().safeParse(formData.get("caseId"));
+    if (!caseId.success || !isSupabaseConfigured()) return data({ error: "削除する施工事例を指定してください。" }, { status: 400 });
+
+    const supabase = getSupabaseBrowserClient();
+    const { data: targetCase, error: caseError } = await supabase.from("construction_cases")
+      .select("id, company_id, title")
+      .eq("id", caseId.data)
+      .maybeSingle();
+    if (caseError || !targetCase || !context.memberships.some((membership) => membership.companyId === targetCase.company_id)) {
+      return data({ error: "この施工事例は削除できません。" }, { status: 403 });
+    }
+
+    const { data: imageRows, error: imageError } = await supabase.from("case_images")
+      .select("storage_path")
+      .eq("case_id", caseId.data);
+    if (imageError) return data({ error: "施工写真を確認できませんでした。" }, { status: 400 });
+    const storageError = await removeImages("case-images", (imageRows ?? []).map((image) => image.storage_path));
+    if (storageError) return data({ error: "施工写真を削除できませんでした。" }, { status: 400 });
+
+    const { data: deletedCase, error: deleteError } = await supabase.from("construction_cases")
+      .delete()
+      .eq("id", caseId.data)
+      .eq("company_id", targetCase.company_id)
+      .select("id")
+      .maybeSingle();
+    if (deleteError || !deletedCase) return data({ error: "施工事例を削除できませんでした。" }, { status: 400 });
+    return data({ deleted: true, title: targetCase.title });
+  }
+
   if (formData.get("intent") !== "mark-read") return data({ error: "不正な操作です。" }, { status: 400 });
 
   const messageId = z.uuid().safeParse(formData.get("messageId"));
@@ -43,7 +74,7 @@ export function HydrateFallback() {
   return <ProtectedRouteFallback />;
 }
 
-export default function CompanyDashboardRoute({ loaderData }: { loaderData: ReturnType<typeof loader> }) {
+export default function CompanyDashboardRoute({ loaderData, actionData }: Route.ComponentProps) {
   if (!loaderData.company) return <DashboardLayout type="company"><div className="empty-state"><h1>企業情報が見つかりません</h1></div></DashboardLayout>;
 
   return (
@@ -58,7 +89,23 @@ export default function CompanyDashboardRoute({ loaderData }: { loaderData: Retu
       </header>
       <section className="dashboard-section">
         <div className="section-header"><h2>施工事例</h2><Link to="/company/cases/new">施工事例を追加</Link></div>
-        <CaseGrid items={loaderData.cases} />
+        {actionData && "deleted" in actionData && actionData.deleted ? <p className="success-message" role="status">「{actionData.title}」を削除しました。</p> : null}
+        {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
+        {loaderData.cases.length ? <div className="case-grid">
+          {loaderData.cases.map((item) => <div className="managed-case" key={item.id}>
+            <CaseCard item={item} />
+            <div className="managed-case__actions">
+              <Link className="button button--secondary" to={`/company/cases/${item.id}/edit`}>編集</Link>
+              <Form method="post" onSubmit={(event) => {
+                if (!window.confirm(`「${item.title}」を削除しますか？この操作は取り消せません。`)) event.preventDefault();
+              }}>
+                <input type="hidden" name="intent" value="delete-case" />
+                <input type="hidden" name="caseId" value={item.id} />
+                <Button type="submit" variant="danger">削除</Button>
+              </Form>
+            </div>
+          </div>)}
+        </div> : <div className="empty-state"><p>施工事例はまだありません。</p></div>}
       </section>
       <section className="dashboard-section">
         <div className="section-header">

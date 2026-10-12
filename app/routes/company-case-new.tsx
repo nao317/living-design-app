@@ -118,10 +118,10 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       }
     }
     if (formData.get("publish") === "on") {
-      const { error: publishError } = await supabase.from("construction_cases")
+      const { data: publishedCase, error: publishError } = await supabase.from("construction_cases")
         .update({ status: "PUBLISHED", published_at: new Date().toISOString() })
-        .eq("id", createdCaseId);
-      if (publishError) return data({ error: "事例は下書きとして保存されました。編集画面から公開してください。", caseId: createdCaseId }, { status: 400 });
+        .eq("id", createdCaseId).select("id, status").maybeSingle();
+      if (publishError || publishedCase?.status !== "PUBLISHED") return data({ error: "事例は下書きとして保存されました。編集画面から公開してください。", caseId: createdCaseId }, { status: 400 });
     }
   }
 
