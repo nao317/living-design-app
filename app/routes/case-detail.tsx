@@ -30,6 +30,7 @@ export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
     <PublicLayout>
       <article className="public-page case-detail-page">
         <Link to="/search" className="back-link"><ArrowLeft size={16} />検索結果へ戻る</Link>
+        {item.status && item.status !== "PUBLISHED" ? <p className="case-visibility-notice" role="status">この事例は{item.status === "DRAFT" ? "下書き" : "非公開"}です。検索結果には表示されません。<Link to={`/company/cases/${item.id}/edit`}>編集画面で公開する</Link></p> : null}
         <div className="before-after">
           <figure><figcaption>BEFORE</figcaption>{beforeImage ? <StorageImage src={beforeImage} storagePath={item.imagesPaths?.[1]} bucket="case-images" alt="施工前" loading="eager" fetchPriority="high" /> : <div className="image-empty">画像未登録</div>}</figure>
           <figure><figcaption>AFTER</figcaption>{afterImage ? <StorageImage src={afterImage} storagePath={item.imagesPaths?.[0]} bucket="case-images" alt="施工後" loading="eager" fetchPriority="high" /> : <div className="image-empty">画像未登録</div>}</figure>

@@ -17,8 +17,16 @@ const caseSchema = z.object({
   area: z.string().trim().max(120),
   period: z.string().trim().max(120),
   summary: z.string().trim().max(2000),
+  priceMin: z.string().trim(),
+  priceMax: z.string().trim(),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]),
 });
+
+function parsePrice(value: string) {
+  if (!value) return null;
+  const price = Number(value);
+  return Number.isInteger(price) && price >= 0 && price <= 2_147_483_647 ? price : undefined;
+}
 
 type CaseImageView = { id: string; storagePath: string; url: string };
 
@@ -35,10 +43,15 @@ export function loader({ params }: Route.LoaderArgs) {
 }
 
 export async function clientAction({ request, params }: Route.ClientActionArgs) {
-  await requireAuthorization(request, { roles: ["COMPANY", "ADMIN"] });
+  const authorization = await requireAuthorization(request, { roles: ["COMPANY", "ADMIN"] });
   const formData = await request.formData();
   const result = caseSchema.safeParse(Object.fromEntries(formData));
   if (!result.success) return data({ error: "入力内容を確認してください。" }, { status: 400 });
+  const priceMin = parsePrice(result.data.priceMin);
+  const priceMax = parsePrice(result.data.priceMax);
+  if (priceMin === undefined || priceMax === undefined || (priceMin !== null && priceMax !== null && priceMin > priceMax)) {
+    return data({ error: "予算の下限と上限を確認してください。" }, { status: 400 });
+  }
   if (isSupabaseConfigured() && params.caseId) {
     const supabase = getSupabaseBrowserClient();
     const { data: currentCase, error: currentCaseError } = await supabase.from("construction_cases")
@@ -46,14 +59,19 @@ export async function clientAction({ request, params }: Route.ClientActionArgs) 
       .eq("id", params.caseId)
       .maybeSingle();
     if (currentCaseError || !currentCase) return data({ error: "施工事例が見つかりません。" }, { status: 404 });
+    if (authorization.accountRole === "COMPANY" && !authorization.memberships.some((membership) => membership.companyId === currentCase.company_id)) {
+      return data({ error: "この施工事例は編集できません。" }, { status: 403 });
+    }
 
-    const { error } = await supabase.from("construction_cases").update({
+    const { data: savedCase, error } = await supabase.from("construction_cases").update({
       title: result.data.title,
       area: result.data.area,
       construction_period: result.data.period,
       summary: result.data.summary,
-    }).eq("id", params.caseId);
-    if (error) return data({ error: "施工事例を保存できませんでした。" }, { status: 400 });
+      price_min: priceMin,
+      price_max: priceMax,
+    }).eq("id", params.caseId).select("id").maybeSingle();
+    if (error || !savedCase) return data({ error: "施工事例を保存できませんでした。編集権限を確認してください。" }, { status: 400 });
 
     const categoryIds = formData.getAll("categoryIds").filter((value): value is string => typeof value === "string" && value.length > 0);
     const styleIds = formData.getAll("styleIds").filter((value): value is string => typeof value === "string" && value.length > 0);
@@ -115,27 +133,30 @@ export async function clientAction({ request, params }: Route.ClientActionArgs) 
         return data({ error: "施工事例の画像を保存できませんでした。" }, { status: 400 });
       }
     }
-    const { error: statusError } = await supabase.from("construction_cases").update({
+    const { data: updatedStatus, error: statusError } = await supabase.from("construction_cases").update({
       status: result.data.status,
       published_at: result.data.status === "PUBLISHED" ? currentCase.published_at ?? new Date().toISOString() : currentCase.published_at,
-    }).eq("id", params.caseId);
-    if (statusError) return data({ error: "公開状態を更新できませんでした。" }, { status: 400 });
+    }).eq("id", params.caseId).select("id, status").maybeSingle();
+    if (statusError || updatedStatus?.status !== result.data.status) return data({ error: "公開状態を更新できませんでした。編集権限を確認してください。" }, { status: 400 });
   }
   return data({ saved: true });
 }
 
 export async function clientLoader({ request, params, serverLoader }: Route.ClientLoaderArgs) {
-  await requireAuthorization(request, { roles: ["COMPANY", "ADMIN"] });
+  const authorization = await requireAuthorization(request, { roles: ["COMPANY", "ADMIN"] });
   const serverData = await serverLoader();
   if (!isSupabaseConfigured() || !params.caseId) return serverData;
 
   const supabase = getSupabaseBrowserClient();
   const { data: item, error } = await supabase.from("construction_cases")
-    .select("title, summary, area, construction_period, status")
+    .select("company_id, title, summary, area, construction_period, price_min, price_max, status")
     .eq("id", params.caseId)
     .maybeSingle();
   if (error) throw error;
   if (!item) throw new Response("施工事例が見つかりません", { status: 404 });
+  if (authorization.accountRole === "COMPANY" && !authorization.memberships.some((membership) => membership.companyId === item.company_id)) {
+    throw new Response("施工事例が見つかりません", { status: 404 });
+  }
   const { data: imageRows, error: imageError } = await supabase.from("case_images")
     .select("id, storage_path")
     .eq("case_id", params.caseId)
@@ -170,6 +191,8 @@ export async function clientLoader({ request, params, serverLoader }: Route.Clie
       summary: item.summary,
       area: item.area,
       period: item.construction_period,
+      priceMin: item.price_min,
+      priceMax: item.price_max,
       company: "",
       companyId: "",
       image: caseImages[0]?.url ?? "",
@@ -212,6 +235,8 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
             <Field label="タイトル"><input name="title" defaultValue={loaderData.item.title} required /></Field>
             <Field label="施工地域"><input name="area" defaultValue={loaderData.item.area} /></Field>
             <Field label="施工期間"><input name="period" defaultValue={loaderData.item.period} /></Field>
+            <Field label="費用下限"><input name="priceMin" type="number" min="0" max="2147483647" defaultValue={loaderData.item.priceMin ?? ""} /></Field>
+            <Field label="費用上限"><input name="priceMax" type="number" min="0" max="2147483647" defaultValue={loaderData.item.priceMax ?? ""} /></Field>
           </div>
           <Field label="概要"><textarea name="summary" rows={4} defaultValue={loaderData.item.summary} /></Field>
           <Field label="公開状態"><select name="status" defaultValue={loaderData.item.status ?? "DRAFT"}><option value="DRAFT">下書き</option><option value="PUBLISHED">公開</option><option value="ARCHIVED">非公開（アーカイブ）</option></select></Field>

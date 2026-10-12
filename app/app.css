@@ -506,6 +506,23 @@ img {
   font-size: 12px;
 }
 
+.case-visibility-notice {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid #d8c7a0;
+  border-radius: 4px;
+  background: #fff8e8;
+  color: #614c20;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.case-visibility-notice a {
+  margin-left: 8px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
 .before-after {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -865,6 +882,18 @@ img {
   gap: 16px;
 }
 
+.managed-case__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 0;
+}
+
+.managed-case__actions .button {
+  min-width: 64px;
+  font-size: 11px;
+}
+
 .case-card {
   overflow: hidden;
   border-radius: 4px;
@@ -905,6 +934,12 @@ img {
   margin: 4px 0;
   color: #667168;
   font-size: 9px;
+}
+
+.case-card .case-card__status {
+  color: #8b5c13;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .case-card__meta {

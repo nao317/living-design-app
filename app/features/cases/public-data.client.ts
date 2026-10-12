@@ -6,6 +6,7 @@ import { filterSearchRecords, type SearchRecord } from "../search/filter";
 
 type CaseRow = {
   id: string;
+  status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   company_id: string;
   title: string;
   summary: string;
@@ -74,6 +75,7 @@ function toCaseStudy(
   const styles = metadata.styles ?? [];
   return {
     id: row.id,
+    status: row.status,
     title: row.title,
     company: company.name,
     companyId: company.id,
@@ -300,7 +302,7 @@ export async function fetchCaseById(caseId: string) {
   if (!isSupabaseConfigured() || !uuidPattern.test(caseId)) return null;
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.from("construction_cases")
-    .select("id, company_id, title, summary, area, price_min, price_max, construction_period")
+    .select("id, company_id, title, summary, area, price_min, price_max, construction_period, status")
     .eq("id", caseId)
     .maybeSingle();
   if (error) throw error;
@@ -381,7 +383,7 @@ export async function fetchManagedCompany(companyId: string) {
   const supabase = getSupabaseBrowserClient();
   const [{ data: company, error: companyError }, { data: caseRows, error: casesError }, { data: memberRows, error: membersError }, { data: messageRows, error: messagesError }] = await Promise.all([
     supabase.from("companies").select("id, name, email, address, phone, founded_year, business_hours, website_url, description, logo_path, cover_image_path").eq("id", companyId).maybeSingle(),
-    supabase.from("construction_cases").select("id, company_id, title, summary, area, price_min, price_max, construction_period").eq("company_id", companyId).order("updated_at", { ascending: false }),
+    supabase.from("construction_cases").select("id, company_id, title, summary, area, price_min, price_max, construction_period, status").eq("company_id", companyId).order("updated_at", { ascending: false }),
     supabase.from("company_members").select("user_id, role").eq("company_id", companyId),
     supabase.from("contact_messages").select("id, company_id, sender_name, sender_email, subject, message, case_id, status, created_at, read_at").eq("company_id", companyId).order("created_at", { ascending: false }),
   ]);
