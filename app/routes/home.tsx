@@ -1,7 +1,24 @@
 import { Filters } from "../components/organisms";
-import { SearchBar } from "../components/molecules";
 import { PublicLayout } from "../components/templates";
 import { media } from "../data/media";
+import { fetchSearchOptions, type SearchOption } from "../features/cases/public-data.client";
+import type { Route } from "./+types/home";
+
+export function loader() {
+  return { categories: [] as SearchOption[], styles: [] as SearchOption[] };
+}
+
+export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
+  const serverData = await serverLoader();
+  try {
+    return { ...serverData, ...(await fetchSearchOptions()) };
+  } catch (error) {
+    console.error("Failed to load search options", error);
+    return serverData;
+  }
+}
+
+clientLoader.hydrate = true as const;
 
 export function meta() {
   return [
@@ -10,7 +27,7 @@ export function meta() {
   ];
 }
 
-export default function HomeRoute() {
+export default function HomeRoute({ loaderData }: Route.ComponentProps) {
   return (
     <PublicLayout>
       <div className="public-page home-page">
@@ -19,8 +36,7 @@ export default function HomeRoute() {
             <h1>飯塚で理想のリフォーム＆<br />リノベーション</h1>
           </div>
         </section>
-        <SearchBar />
-        <Filters compact />
+        <Filters compact categories={loaderData.categories} styles={loaderData.styles} />
       </div>
     </PublicLayout>
   );

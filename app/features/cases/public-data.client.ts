@@ -1,6 +1,7 @@
 import { getSignedImageUrl } from "../media/image-storage.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../../lib/supabase.client";
 import type { CaseStudy, CompanyContactOption, CompanyMember, CompanyProfile, CompanySummary, ContactMessage } from "./types";
+import type { SearchParams } from "../search/schema";
 
 type CaseRow = {
   id: string;
@@ -50,8 +51,14 @@ function formatPrice(row: CaseRow) {
 }
 
 function parsePeriodMonths(value: string) {
-  const match = value.match(/\d+/);
-  return match ? Number(match[0]) : null;
+  const years = value.match(/(\d+)\s*年/);
+  const months = value.match(/(\d+)\s*(?:ヶ|か|カ)?月/);
+  if (years || months) return Number(years?.[1] ?? 0) * 12 + Number(months?.[1] ?? 0);
+  const weeks = value.match(/(\d+)\s*週間/);
+  if (weeks) return Number(weeks[1]) * 7 / 30.44;
+  const days = value.match(/(\d+)\s*日/);
+  if (days) return Number(days[1]) / 30.44;
+  return /^\s*\d+\s*$/.test(value) ? Number(value.trim()) : null;
 }
 
 function toCaseStudy(
@@ -153,6 +160,41 @@ export async function fetchPublishedCases() {
     .order("published_at", { ascending: false });
   if (error) throw error;
   return fetchCasesByRows((data ?? []) as CaseRow[]);
+}
+
+export type SearchOption = { slug: string; name: string };
+
+export async function fetchSearchOptions() {
+  if (!isSupabaseConfigured()) return { categories: [] as SearchOption[], styles: [] as SearchOption[] };
+  const supabase = getSupabaseBrowserClient();
+  const [categories, styles] = await Promise.all([
+    supabase.from("categories").select("slug, name").order("display_order"),
+    supabase.from("styles").select("slug, name").order("display_order"),
+  ]);
+  if (categories.error) throw categories.error;
+  if (styles.error) throw styles.error;
+  return { categories: categories.data ?? [], styles: styles.data ?? [] };
+}
+
+export async function searchPublishedCases(filters: SearchParams, pageSize: number) {
+  if (!isSupabaseConfigured()) return { items: [] as CaseStudy[], total: 0 };
+  const supabase = getSupabaseBrowserClient();
+  const args = {
+    p_q: filters.q,
+    p_area: filters.area,
+    p_category: filters.category,
+    p_style: filters.style,
+    p_price_min: filters.priceMin ?? null,
+    p_price_max: filters.priceMax ?? null,
+    p_period_months: filters.period ? Number(filters.period) : null,
+    p_sort: filters.sort,
+    p_page: filters.page,
+    p_page_size: pageSize,
+  };
+  const { data, error } = await supabase.rpc("search_public_cases", args);
+  if (error) throw error;
+  const result = data as { items: CaseRow[]; total: number };
+  return { items: await fetchCasesByRows(result.items ?? []), total: result.total ?? 0 };
 }
 
 export async function fetchCaseById(caseId: string) {

@@ -1,9 +1,10 @@
 import type { Route } from "./+types/search";
-import { SearchBar, Pagination } from "../components/molecules";
+import { Pagination } from "../components/molecules";
+import { useNavigation } from "react-router";
 import { CaseList, Filters } from "../components/organisms";
 import { PublicLayout } from "../components/templates";
-import { searchParamsSchema } from "../features/search/schema";
-import { fetchPublishedCases } from "../features/cases/public-data.client";
+import { hasInvalidPriceRange, parseSearchParams } from "../features/search/schema";
+import { fetchSearchOptions, searchPublishedCases, type SearchOption } from "../features/cases/public-data.client";
 import type { CaseStudy } from "../features/cases/types";
 
 const pageSize = 10;
@@ -14,49 +15,58 @@ export function meta() {
 
 export function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
-  const filters = searchParamsSchema.parse(Object.fromEntries(url.searchParams));
-  return { items: [] as CaseStudy[], filters, total: 0 };
+  const filters = parseSearchParams(url.searchParams);
+  return { items: [] as CaseStudy[], filters, total: 0, categories: [] as SearchOption[], styles: [] as SearchOption[], invalidPriceRange: hasInvalidPriceRange(filters), loadError: false };
 }
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
   const serverData = await serverLoader();
-  const items = await fetchPublishedCases();
-  const filters = searchParamsSchema.parse(Object.fromEntries(new URL(request.url).searchParams));
-  const normalizedQuery = filters.q.toLocaleLowerCase("ja-JP");
-  const filtered = items.filter((item) => {
-    const searchableText = [item.title, item.company, item.companyAddress, item.area, ...item.categories, ...(item.styles ?? [])]
-      .filter(Boolean)
-      .join(" ")
-      .toLocaleLowerCase("ja-JP");
-    const matchesQuery = !normalizedQuery || searchableText.includes(normalizedQuery);
-    const matchesCategory = !filters.category || item.categorySlugs?.includes(filters.category);
-    const matchesStyle = !filters.style || item.styleSlugs?.includes(filters.style);
-    const hasPrice = item.priceMin !== null && item.priceMin !== undefined || item.priceMax !== null && item.priceMax !== undefined;
-    const matchesMinPrice = filters.priceMin === undefined || (hasPrice && (item.priceMax === null || item.priceMax === undefined || item.priceMax >= filters.priceMin));
-    const matchesMaxPrice = filters.priceMax === undefined || (hasPrice && (item.priceMin === null || item.priceMin === undefined || item.priceMin <= filters.priceMax));
-    const matchesPeriod = !filters.period || (item.periodMonths !== null && item.periodMonths !== undefined && item.periodMonths <= Number(filters.period));
-    return matchesQuery && matchesCategory && matchesStyle && matchesMinPrice && matchesMaxPrice && matchesPeriod;
-  });
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const page = Math.min(filters.page, totalPages);
-  return { ...serverData, items: filtered.slice((page - 1) * pageSize, page * pageSize), filters: { ...filters, page }, total: filtered.length };
+  const requestedFilters = parseSearchParams(new URL(request.url).searchParams);
+  let options = { categories: serverData.categories, styles: serverData.styles };
+  try {
+    options = await fetchSearchOptions();
+    const filters = {
+      ...requestedFilters,
+      category: options.categories.some((option) => option.slug === requestedFilters.category) ? requestedFilters.category : "",
+      style: options.styles.some((option) => option.slug === requestedFilters.style) ? requestedFilters.style : "",
+    };
+    if (hasInvalidPriceRange(filters)) {
+      return { ...serverData, ...options, filters, invalidPriceRange: true };
+    }
+    const firstPage = await searchPublishedCases(filters, pageSize);
+    const page = Math.min(filters.page, Math.max(1, Math.ceil(firstPage.total / pageSize)));
+    const results = page === filters.page ? firstPage : await searchPublishedCases({ ...filters, page }, pageSize);
+    return { ...serverData, ...options, ...results, filters: { ...filters, page } };
+  } catch (error) {
+    console.error("Failed to load case search", error);
+    return { ...serverData, ...options, filters: requestedFilters, loadError: true };
+  }
 }
 
 clientLoader.hydrate = true as const;
 
+export function HydrateFallback() {
+  return <PublicLayout><div className="public-page search-page"><p role="status">施工事例を読み込んでいます…</p></div></PublicLayout>;
+}
+
 export default function SearchRoute({ loaderData }: Route.ComponentProps) {
+  const navigation = useNavigation();
   return (
     <PublicLayout>
       <div className="public-page search-page">
-        <SearchBar defaultValue={loaderData.filters.q} />
         <div className="search-layout">
-          <Filters />
+          <Filters filters={loaderData.filters} categories={loaderData.categories} styles={loaderData.styles} />
           <section className="search-results" aria-labelledby="result-heading">
             <div className="search-results__header">
               <h1 id="result-heading">検索結果</h1>
-              <p>{loaderData.total}件の施工事例が見つかりました</p>
+              {loaderData.invalidPriceRange || loaderData.loadError ? null : <p>{loaderData.total}件の施工事例が見つかりました</p>}
+              {navigation.state !== "idle" ? <p role="status">検索中…</p> : null}
             </div>
-            {loaderData.items.length ? (
+            {loaderData.loadError ? (
+              <p className="form-error" role="alert">検索結果を取得できませんでした。時間をおいて再度お試しください。</p>
+            ) : loaderData.invalidPriceRange ? (
+              <p className="form-error" role="alert">予算の下限は上限以下にしてください。</p>
+            ) : loaderData.items.length ? (
               <>
                 <CaseList items={loaderData.items} />
                 <Pagination totalItems={loaderData.total} currentPage={loaderData.filters.page} pageSize={pageSize} />
