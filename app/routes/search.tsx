@@ -1,6 +1,6 @@
 import type { Route } from "./+types/search";
 import { Pagination } from "../components/molecules";
-import { useNavigation } from "react-router";
+import { useLocation, useNavigation } from "react-router";
 import { CaseList, Filters } from "../components/organisms";
 import { PublicLayout } from "../components/templates";
 import { hasInvalidPriceRange, parseSearchParams } from "../features/search/schema";
@@ -34,7 +34,7 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
       return { ...serverData, ...options, filters, invalidPriceRange: true };
     }
     const firstPage = await searchPublishedCases(filters, pageSize);
-    const page = Math.min(filters.page, Math.max(1, Math.ceil(firstPage.total / pageSize)));
+    const page = "page" in firstPage ? firstPage.page : Math.min(filters.page, Math.max(1, Math.ceil(firstPage.total / pageSize)));
     const results = page === filters.page ? firstPage : await searchPublishedCases({ ...filters, page }, pageSize);
     return { ...serverData, ...options, ...results, filters: { ...filters, page } };
   } catch (error) {
@@ -46,7 +46,14 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
 clientLoader.hydrate = true as const;
 
 export function HydrateFallback() {
-  return <PublicLayout><div className="public-page search-page"><p role="status">施工事例を読み込んでいます…</p></div></PublicLayout>;
+  const location = useLocation();
+  const filters = parseSearchParams(new URLSearchParams(location.search));
+  return <PublicLayout><div className="public-page search-page"><div className="search-layout">
+    <Filters filters={filters} />
+    <section className="search-results" aria-labelledby="result-heading">
+      <div className="search-results__header"><h1 id="result-heading">検索結果</h1><p role="status">施工事例を読み込んでいます…</p></div>
+    </section>
+  </div></div></PublicLayout>;
 }
 
 export default function SearchRoute({ loaderData }: Route.ComponentProps) {
@@ -73,8 +80,11 @@ export default function SearchRoute({ loaderData }: Route.ComponentProps) {
               </>
             ) : (
               <div className="empty-state">
-                <h2>該当する施工事例がありません</h2>
-                <p>条件を変更して検索してください。</p>
+                {loaderData.filters.q || loaderData.filters.area || loaderData.filters.category || loaderData.filters.style || loaderData.filters.priceMin !== undefined || loaderData.filters.priceMax !== undefined || loaderData.filters.period ? (
+                  <><h2>該当する施工事例がありません</h2><p>条件を変更して検索してください。</p></>
+                ) : (
+                  <><h2>公開中の施工事例がありません</h2><p>施工事例が公開されるまでお待ちください。</p></>
+                )}
               </div>
             )}
           </section>

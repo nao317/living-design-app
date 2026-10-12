@@ -1,17 +1,21 @@
 export type CaseStudy = {
   id: string;
+  status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   title: string;
   company: string;
   companyId: string;
   companyAddress?: string;
   companyImage?: string;
+  companyImagePath?: string;
   image: string;
+  imagePath?: string;
   area: string;
   price: string;
   period: string;
   categories: string[];
   summary: string;
   images?: string[];
+  imagesPaths?: string[];
   priceMin?: number | null;
   priceMax?: number | null;
   periodMonths?: number | null;
@@ -34,9 +38,12 @@ export type CompanyProfile = {
   features: string[];
   logoImage?: string;
   coverImage?: string;
+  imagePath?: string;
+  logoImagePath?: string;
+  coverImagePath?: string;
 };
 
-export type CompanySummary = Pick<CompanyProfile, "id" | "name" | "address" | "description" | "image">;
+export type CompanySummary = Pick<CompanyProfile, "id" | "name" | "address" | "description" | "image" | "imagePath">;
 
 export type CompanyMember = {
   id: string;

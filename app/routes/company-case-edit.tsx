@@ -9,6 +9,7 @@ import type { CaseStudy } from "../features/cases/types";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { getSignedImageUrl, isImageFile, removeImages, uploadImage } from "../features/media/image-storage.client";
+import { StorageImage } from "../features/media/storage-image";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 
 const caseSchema = z.object({
@@ -16,6 +17,7 @@ const caseSchema = z.object({
   area: z.string().trim().max(120),
   period: z.string().trim().max(120),
   summary: z.string().trim().max(2000),
+  status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]),
 });
 
 type CaseImageView = { id: string; storagePath: string; url: string };
@@ -40,7 +42,7 @@ export async function clientAction({ request, params }: Route.ClientActionArgs) 
   if (isSupabaseConfigured() && params.caseId) {
     const supabase = getSupabaseBrowserClient();
     const { data: currentCase, error: currentCaseError } = await supabase.from("construction_cases")
-      .select("company_id")
+      .select("company_id, status, published_at")
       .eq("id", params.caseId)
       .maybeSingle();
     if (currentCaseError || !currentCase) return data({ error: "施工事例が見つかりません。" }, { status: 404 });
@@ -113,6 +115,11 @@ export async function clientAction({ request, params }: Route.ClientActionArgs) 
         return data({ error: "施工事例の画像を保存できませんでした。" }, { status: 400 });
       }
     }
+    const { error: statusError } = await supabase.from("construction_cases").update({
+      status: result.data.status,
+      published_at: result.data.status === "PUBLISHED" ? currentCase.published_at ?? new Date().toISOString() : currentCase.published_at,
+    }).eq("id", params.caseId);
+    if (statusError) return data({ error: "公開状態を更新できませんでした。" }, { status: 400 });
   }
   return data({ saved: true });
 }
@@ -124,7 +131,7 @@ export async function clientLoader({ request, params, serverLoader }: Route.Clie
 
   const supabase = getSupabaseBrowserClient();
   const { data: item, error } = await supabase.from("construction_cases")
-    .select("title, summary, area, construction_period")
+    .select("title, summary, area, construction_period, status")
     .eq("id", params.caseId)
     .maybeSingle();
   if (error) throw error;
@@ -137,7 +144,7 @@ export async function clientLoader({ request, params, serverLoader }: Route.Clie
   const caseImages = (await Promise.all((imageRows ?? []).map(async (image) => ({
     id: image.id,
     storagePath: image.storage_path,
-    url: await getSignedImageUrl("case-images", image.storage_path),
+    url: await getSignedImageUrl("case-images", image.storage_path, "thumbnail"),
   })))).filter((image): image is CaseImageView => Boolean(image.url));
   const [{ data: categories, error: categoriesError }, { data: styles, error: stylesError }, { data: selectedCategories, error: selectedCategoriesError }, { data: selectedStyles, error: selectedStylesError }] = await Promise.all([
     supabase.from("categories").select("id, name").order("display_order"),
@@ -158,6 +165,7 @@ export async function clientLoader({ request, params, serverLoader }: Route.Clie
     selectedStyleIds: (selectedStyles ?? []).map((row) => row.style_id),
     item: {
       id: params.caseId,
+      status: item.status,
       title: item.title,
       summary: item.summary,
       area: item.area,
@@ -190,7 +198,7 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
         <section className="case-photo-editor">
           {loaderData.caseImages.map((image) => (
             <div className="case-photo-item" key={image.id}>
-              <img src={image.url} alt="施工事例" />
+              <StorageImage src={image.url} storagePath={image.storagePath} bucket="case-images" alt="施工事例" />
               <label><input type="checkbox" name="removeImageIds" value={image.id} />削除</label>
             </div>
           ))}
@@ -206,6 +214,7 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
             <Field label="施工期間"><input name="period" defaultValue={loaderData.item.period} /></Field>
           </div>
           <Field label="概要"><textarea name="summary" rows={4} defaultValue={loaderData.item.summary} /></Field>
+          <Field label="公開状態"><select name="status" defaultValue={loaderData.item.status ?? "DRAFT"}><option value="DRAFT">下書き</option><option value="PUBLISHED">公開</option><option value="ARCHIVED">非公開（アーカイブ）</option></select></Field>
           <fieldset className="choice-list"><legend>リノベーション箇所</legend>{loaderData.categories.map((category) => <label key={category.id}><input type="checkbox" name="categoryIds" value={category.id} defaultChecked={loaderData.selectedCategoryIds.includes(category.id)} />{category.name}</label>)}</fieldset>
           <fieldset className="choice-list"><legend>こだわり条件</legend>{loaderData.styles.map((style) => <label key={style.id}><input type="checkbox" name="styleIds" value={style.id} defaultChecked={loaderData.selectedStyleIds.includes(style.id)} />{style.name}</label>)}</fieldset>
           <div className="form-actions"><Button type="submit">更新する</Button></div>

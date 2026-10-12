@@ -11,6 +11,7 @@ import { getAuthorizationContext } from "../features/auth/authorization.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 import type { CompanyProfile } from "../features/cases/types";
 import { getSignedImageUrl, isImageFile, removeImages, uploadImage } from "../features/media/image-storage.client";
+import { StorageImage } from "../features/media/storage-image";
 
 const profileSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -115,8 +116,8 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
   if (error) throw error;
   if (!record) return serverData;
   const [coverImage, logoImage] = await Promise.all([
-    getSignedImageUrl("company-assets", record.cover_image_path),
-    getSignedImageUrl("company-assets", record.logo_path),
+    getSignedImageUrl("company-assets", record.cover_image_path, "card"),
+    getSignedImageUrl("company-assets", record.logo_path, "thumbnail"),
   ]);
 
   return {
@@ -136,8 +137,11 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
       businessHours: record.business_hours,
       description: record.description,
       image: coverImage ?? logoImage ?? "",
+      imagePath: record.cover_image_path ?? record.logo_path ?? undefined,
       coverImage: coverImage ?? undefined,
       logoImage: logoImage ?? undefined,
+      coverImagePath: record.cover_image_path ?? undefined,
+      logoImagePath: record.logo_path ?? undefined,
     },
   };
 }
@@ -159,11 +163,11 @@ export default function CompanyProfileEditRoute({ loaderData, actionData }: Rout
       <Form method="post" encType="multipart/form-data" className="edit-form">
         <section className="company-media-fields">
           <label className="media-placeholder media-upload">
-            {loaderData.company.coverImage ? <img src={loaderData.company.coverImage} alt="企業のメイン画像" /> : <><Plus /><span>メイン画像を追加</span></>}
+            {loaderData.company.coverImage ? <StorageImage src={loaderData.company.coverImage} storagePath={loaderData.company.coverImagePath} bucket="company-assets" alt="企業のメイン画像" /> : <><Plus /><span>メイン画像を追加</span></>}
             <input type="file" name="coverImage" accept="image/jpeg,image/png,image/webp" />
           </label>
           <label className="media-placeholder media-upload">
-            {loaderData.company.logoImage ? <img src={loaderData.company.logoImage} alt="企業ロゴ" /> : <><Camera /><span>ロゴ画像を追加</span></>}
+            {loaderData.company.logoImage ? <StorageImage src={loaderData.company.logoImage} storagePath={loaderData.company.logoImagePath} bucket="company-assets" alt="企業ロゴ" /> : <><Camera /><span>ロゴ画像を追加</span></>}
             <input type="file" name="logoImage" accept="image/jpeg,image/png,image/webp" />
           </label>
           <label className="media-remove"><input type="checkbox" name="removeCover" /> <Trash2 size={14} />メイン画像を削除</label>

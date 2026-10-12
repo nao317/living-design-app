@@ -4,6 +4,7 @@ import { CompanySearchBar, Pagination } from "../components/molecules";
 import { PublicLayout } from "../components/templates";
 import { fetchPublishedCompanies } from "../features/cases/public-data.client";
 import type { CompanySummary } from "../features/cases/types";
+import { StorageImage } from "../features/media/storage-image";
 
 const pageSize = 12;
 
@@ -21,9 +22,10 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
   const requestedPage = Number(params.get("page") ?? "1");
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const page = Number.isInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
+  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
   return {
     ...(await serverLoader()),
-    items: filtered.slice((page - 1) * pageSize, page * pageSize),
+    items: visible,
     total: filtered.length,
     page,
     query,
@@ -43,7 +45,7 @@ export default function CompaniesRoute({ loaderData }: Route.ComponentProps) {
             <div className="company-directory">
               {loaderData.items.map((company) => (
                 <article className="company-directory__item" key={company.id}>
-                  {company.image ? <img src={company.image} alt="" /> : <div className="image-empty">企業画像未登録</div>}
+                  {company.imagePath ? <StorageImage src={company.image} storagePath={company.imagePath} bucket="company-assets" preset="card" alt="" /> : <div className="image-empty">企業画像未登録</div>}
                   <div>
                     <h2>{company.name}</h2>
                     <p>{company.description}</p>
