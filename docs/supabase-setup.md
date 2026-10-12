@@ -5,6 +5,7 @@
 ## 1. データベースを作成する
 
 Supabase Dashboardの「SQL Editor」で supabase/setup.sql の全内容を実行してください。
+続けて `supabase/search.sql` を実行してください。既存環境では `supabase/search.sql` だけを実行すれば、施工事例検索用の関数を追加できます。
 
 SQLには次の内容が含まれます。
 

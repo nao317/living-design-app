@@ -38,6 +38,7 @@ Your application will be available at `http://localhost:5173`.
 
 Database, Email authentication, and Google OAuth setup are documented in [docs/supabase-setup.md](./docs/supabase-setup.md).
 Run [supabase/setup.sql](./supabase/setup.sql) in the Supabase SQL Editor before connecting the app.
+Then run [supabase/search.sql](./supabase/search.sql) to enable filtered case search.
 
 ## Building for Production
 
