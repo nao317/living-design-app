@@ -3,6 +3,8 @@ import { Form, Link, NavLink, useNavigate } from "react-router";
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import type { CaseStudy } from "../../features/cases/types";
+import type { SearchParams } from "../../features/search/schema";
+import type { SearchOption } from "../../features/cases/public-data.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../../lib/supabase.client";
 import { CaseCard, CaseListItem } from "../molecules";
 import { Button } from "../atoms";
@@ -136,33 +138,45 @@ export function CaseList({ items }: { items: CaseStudy[] }) {
   return <div className="case-list">{items.map((item) => <CaseListItem key={item.id} item={item} />)}</div>;
 }
 
-export function Filters({ compact = false }: { compact?: boolean }) {
+export function Filters({ compact = false, filters, categories = [], styles = [] }: {
+  compact?: boolean;
+  filters?: SearchParams;
+  categories?: SearchOption[];
+  styles?: SearchOption[];
+}) {
   return (
-    <Form method="get" action="/search" className={compact ? "filters filters--home" : "filters"}>
+    <Form key={filters ? JSON.stringify(filters) : "home"} method="get" action="/search" className={compact ? "filters filters--home" : "filters"}>
       <h2>絞り込み検索</h2>
+      <label>キーワード<input name="q" defaultValue={filters?.q ?? ""} maxLength={100} placeholder="施工箇所・地域・会社名" /></label>
+      <label>施工地域<input name="area" defaultValue={filters?.area ?? ""} maxLength={120} placeholder="地域を入力" /></label>
       <label>リノベーション箇所
-        <select name="category" defaultValue="">
+        <select name="category" defaultValue={filters?.category ?? ""}>
           <option value="">選択してください</option>
-          <option value="kitchen">キッチン</option>
-          <option value="living">リビング</option>
-          <option value="bath">水回り</option>
+          {categories.map((category) => <option key={category.slug} value={category.slug}>{category.name}</option>)}
         </select>
       </label>
       <label>予算
-        <span className="range-fields"><input name="priceMin" inputMode="numeric" /><span>〜</span><input name="priceMax" inputMode="numeric" /></span>
+        <span className="range-fields"><input name="priceMin" type="number" min="0" inputMode="numeric" defaultValue={filters?.priceMin ?? ""} aria-label="予算下限" /><span>〜</span><input name="priceMax" type="number" min="0" inputMode="numeric" defaultValue={filters?.priceMax ?? ""} aria-label="予算上限" /></span>
       </label>
       <label>施工期間
-        <select name="period" defaultValue="">
+        <select name="period" defaultValue={filters?.period ?? ""}>
           <option value="">指定なし</option>
           <option value="1">1か月以内</option>
           <option value="3">3か月以内</option>
         </select>
       </label>
       <label>こだわり条件
-        <select name="style" defaultValue="">
+        <select name="style" defaultValue={filters?.style ?? ""}>
           <option value="">指定なし</option>
-          <option value="storage">収納</option>
-          <option value="insulation">断熱</option>
+          {styles.map((style) => <option key={style.slug} value={style.slug}>{style.name}</option>)}
+        </select>
+      </label>
+      <label>並び順
+        <select name="sort" defaultValue={filters?.sort ?? "newest"}>
+          <option value="newest">新しい順</option>
+          <option value="oldest">古い順</option>
+          <option value="price_asc">費用が低い順</option>
+          <option value="price_desc">費用が高い順</option>
         </select>
       </label>
       <Button type="submit">検索する</Button>

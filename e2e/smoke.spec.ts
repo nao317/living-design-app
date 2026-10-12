@@ -27,6 +27,18 @@ for (const [path, heading] of pages) {
   });
 }
 
+test("検索条件を組み合わせてURLとフォームに保持する", async ({ page }) => {
+  await page.goto("/search", { waitUntil: "domcontentloaded" });
+  await page.getByRole("textbox", { name: "キーワード" }).fill("キッチン");
+  await page.getByRole("textbox", { name: "施工地域" }).fill("飯塚");
+  await page.getByRole("button", { name: "検索する" }).click();
+
+  await expect(page).toHaveURL(/q=%E3%82%AD%E3%83%83%E3%83%81%E3%83%B3/);
+  await expect(page).toHaveURL(/area=%E9%A3%AF%E5%A1%9A/);
+  await expect(page.getByRole("textbox", { name: "キーワード" })).toHaveValue("キッチン");
+  await expect(page.getByRole("textbox", { name: "施工地域" })).toHaveValue("飯塚");
+});
+
 for (const path of protectedPages) {
   test(path + " は未認証でログインへ誘導する", async ({ page }) => {
     await page.goto(path, { waitUntil: "domcontentloaded" });
