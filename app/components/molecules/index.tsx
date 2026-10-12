@@ -82,6 +82,7 @@ export function CaseCard({ item }: { item: CaseStudy }) {
       </Link>
       <div className="case-card__body">
         <h3><Link to={"/cases/" + item.id}>{item.title}</Link></h3>
+        {item.status && item.status !== "PUBLISHED" ? <p className="case-card__status">{item.status === "DRAFT" ? "下書き・検索には表示されません" : "非公開・検索には表示されません"}</p> : null}
         <p><Building2 size={13} />{item.company}</p>
         <div className="case-card__meta">
           <span><MapPin size={13} />{item.area}</span>
