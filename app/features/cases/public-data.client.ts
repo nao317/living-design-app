@@ -2,6 +2,7 @@ import { getSignedImageUrl } from "../media/image-storage.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../../lib/supabase.client";
 import type { CaseStudy, CompanyContactOption, CompanyMember, CompanyProfile, CompanySummary, ContactMessage } from "./types";
 import type { SearchParams } from "../search/schema";
+import { filterSearchRecords, type SearchRecord } from "../search/filter";
 
 type CaseRow = {
   id: string;
@@ -13,6 +14,9 @@ type CaseRow = {
   price_max: number | null;
   construction_period: string;
 };
+
+type SearchCaseRow = CaseRow & { published_at: string | null };
+let searchRpcUnavailable = false;
 
 type CompanyRow = {
   id: string;
@@ -64,7 +68,7 @@ function parsePeriodMonths(value: string) {
 function toCaseStudy(
   row: CaseRow,
   company: Pick<CompanyRow, "id" | "name" | "address">,
-  metadata: { categories?: Array<{ slug: string; name: string }>; styles?: Array<{ slug: string; name: string }>; companyImage?: string } = {},
+  metadata: { categories?: Array<{ slug: string; name: string }>; styles?: Array<{ slug: string; name: string }>; companyImage?: string; companyImagePath?: string } = {},
 ): CaseStudy {
   const categories = metadata.categories ?? [];
   const styles = metadata.styles ?? [];
@@ -75,6 +79,7 @@ function toCaseStudy(
     companyId: company.id,
     companyAddress: company.address,
     companyImage: metadata.companyImage,
+    companyImagePath: metadata.companyImagePath,
     image: "",
     area: row.area,
     price: formatPrice(row),
@@ -90,7 +95,7 @@ function toCaseStudy(
   };
 }
 
-async function fetchCasesByRows(rows: CaseRow[]) {
+async function fetchCasesByRows(rows: CaseRow[], includeGallery = false) {
   if (!rows.length) return [];
   const supabase = getSupabaseBrowserClient();
   const companyIds = [...new Set(rows.map((row) => row.company_id))];
@@ -116,10 +121,9 @@ async function fetchCasesByRows(rows: CaseRow[]) {
   if (imageResult.error) throw imageResult.error;
   if (categoryResult.error) throw categoryResult.error;
   if (styleResult.error) throw styleResult.error;
-  const imageUrls = new Map<string, string[]>();
+  const imagePaths = new Map<string, string[]>();
   for (const image of imageResult.data ?? []) {
-    const url = await getSignedImageUrl("case-images", image.storage_path);
-    if (url) imageUrls.set(image.case_id, [...(imageUrls.get(image.case_id) ?? []), url]);
+    imagePaths.set(image.case_id, [...(imagePaths.get(image.case_id) ?? []), image.storage_path]);
   }
   const categories = new Map<string, Array<{ slug: string; name: string }>>();
   for (const row of categoryResult.data ?? []) {
@@ -131,24 +135,35 @@ async function fetchCasesByRows(rows: CaseRow[]) {
     const relation = Array.isArray(row.styles) ? row.styles[0] : row.styles;
     if (relation) styles.set(row.case_id, [...(styles.get(row.case_id) ?? []), relation]);
   }
-  const result: CaseStudy[] = [];
-  for (const row of rows) {
+  const companyImageUrls = new Map<string, Promise<string | null>>();
+  return Promise.all(rows.map(async (row): Promise<CaseStudy | null> => {
     const company = companies.get(row.company_id);
-    if (!company) continue;
-    const images = imageUrls.get(row.id) ?? [];
-    const companyImage = await getSignedImageUrl("company-assets", company.cover_image_path ?? company.logo_path);
+    if (!company) return null;
+    const paths = (imagePaths.get(row.id) ?? []).slice(0, includeGallery ? undefined : 1);
+    const companyImagePath = company.cover_image_path ?? company.logo_path ?? undefined;
+    if (companyImagePath && !companyImageUrls.has(companyImagePath)) {
+      companyImageUrls.set(companyImagePath, getSignedImageUrl("company-assets", companyImagePath, "thumbnail"));
+    }
+    const [imageUrls, companyImage] = await Promise.all([
+      Promise.all(paths.map((path) => getSignedImageUrl("case-images", path, includeGallery ? "detail" : "card"))),
+      companyImagePath ? companyImageUrls.get(companyImagePath)! : Promise.resolve(null),
+    ]);
+    const signedImages = imageUrls.map((url, index) => ({ url, path: paths[index] }))
+      .filter((image): image is { url: string; path: string } => Boolean(image.url));
+    const images = signedImages.map((image) => image.url);
     const item = toCaseStudy(row, company, {
       categories: categories.get(row.id),
       styles: styles.get(row.id),
       companyImage: companyImage ?? undefined,
+      companyImagePath,
     });
-    result.push({
+    return {
       ...item,
       image: images[0] ?? "",
-      ...(images.length ? { images } : {}),
-    });
-  }
-  return result;
+      imagePath: signedImages[0]?.path,
+      ...(includeGallery ? { images, imagesPaths: signedImages.map((image) => image.path) } : {}),
+    };
+  })).then((items) => items.filter((item): item is CaseStudy => item !== null));
 }
 
 export async function fetchPublishedCases() {
@@ -178,6 +193,7 @@ export async function fetchSearchOptions() {
 
 export async function searchPublishedCases(filters: SearchParams, pageSize: number) {
   if (!isSupabaseConfigured()) return { items: [] as CaseStudy[], total: 0 };
+  if (searchRpcUnavailable) return searchPublishedCasesWithoutRpc(filters, pageSize);
   const supabase = getSupabaseBrowserClient();
   const args = {
     p_q: filters.q,
@@ -192,9 +208,92 @@ export async function searchPublishedCases(filters: SearchParams, pageSize: numb
     p_page_size: pageSize,
   };
   const { data, error } = await supabase.rpc("search_public_cases", args);
-  if (error) throw error;
+  if (error) {
+    if (["PGRST202", "42883", "42501"].includes(error.code)) {
+      searchRpcUnavailable = true;
+    }
+    return searchPublishedCasesWithoutRpc(filters, pageSize);
+  }
   const result = data as { items: CaseRow[]; total: number };
   return { items: await fetchCasesByRows(result.items ?? []), total: result.total ?? 0 };
+}
+
+async function searchPublishedCasesWithoutRpc(filters: SearchParams, pageSize: number) {
+  const supabase = getSupabaseBrowserClient();
+  const rows: SearchCaseRow[] = [];
+  const batchSize = 500;
+  for (let offset = 0; ; offset += batchSize) {
+    const { data, error } = await supabase.from("construction_cases")
+      .select("id, company_id, title, summary, area, price_min, price_max, construction_period, published_at")
+      .eq("status", "PUBLISHED")
+      .order("published_at", { ascending: false })
+      .range(offset, offset + batchSize - 1);
+    if (error) throw error;
+    const batch = (data ?? []) as SearchCaseRow[];
+    rows.push(...batch);
+    if (batch.length < batchSize) break;
+  }
+  if (!rows.length) return { items: [] as CaseStudy[], total: 0, page: 1 };
+
+  const companyIds = [...new Set(rows.map((row) => row.company_id))];
+  const companies = new Map<string, { name: string; address: string }>();
+  for (let offset = 0; offset < companyIds.length; offset += 100) {
+    const { data, error } = await supabase.from("companies")
+      .select("id, name, address")
+      .in("id", companyIds.slice(offset, offset + 100))
+      .eq("status", "PUBLISHED");
+    if (error) throw error;
+    for (const company of data ?? []) companies.set(company.id, company);
+  }
+
+  const categories = new Map<string, Array<{ slug: string; name: string }>>();
+  const styles = new Map<string, Array<{ slug: string; name: string }>>();
+  if (filters.q || filters.category || filters.style) {
+    for (let offset = 0; offset < rows.length; offset += 100) {
+      const ids = rows.slice(offset, offset + 100).map((row) => row.id);
+      const [categoryResult, styleResult] = await Promise.all([
+        supabase.from("case_categories").select("case_id, categories(slug, name)").in("case_id", ids),
+        supabase.from("case_styles").select("case_id, styles(slug, name)").in("case_id", ids),
+      ]);
+      if (categoryResult.error) throw categoryResult.error;
+      if (styleResult.error) throw styleResult.error;
+      for (const row of categoryResult.data ?? []) {
+        const category = Array.isArray(row.categories) ? row.categories[0] : row.categories;
+        if (category) categories.set(row.case_id, [...(categories.get(row.case_id) ?? []), category]);
+      }
+      for (const row of styleResult.data ?? []) {
+        const style = Array.isArray(row.styles) ? row.styles[0] : row.styles;
+        if (style) styles.set(row.case_id, [...(styles.get(row.case_id) ?? []), style]);
+      }
+    }
+  }
+
+  const records: SearchRecord[] = rows.flatMap((row) => {
+    const company = companies.get(row.company_id);
+    if (!company) return [];
+    return [{
+      id: row.id,
+      title: row.title,
+      summary: row.summary,
+      area: row.area,
+      companyName: company.name,
+      companyAddress: company.address,
+      categorySlugs: (categories.get(row.id) ?? []).map((item) => item.slug),
+      categoryNames: (categories.get(row.id) ?? []).map((item) => item.name),
+      styleSlugs: (styles.get(row.id) ?? []).map((item) => item.slug),
+      styleNames: (styles.get(row.id) ?? []).map((item) => item.name),
+      priceMin: row.price_min,
+      priceMax: row.price_max,
+      periodMonths: parsePeriodMonths(row.construction_period),
+      publishedAt: row.published_at,
+    }];
+  });
+  const matches = filterSearchRecords(records, filters);
+  const page = Math.min(filters.page, Math.max(1, Math.ceil(matches.length / pageSize)));
+  const selectedIds = matches.slice((page - 1) * pageSize, page * pageSize).map((record) => record.id);
+  const rowById = new Map(rows.map((row) => [row.id, row]));
+  const selectedRows = selectedIds.map((id) => rowById.get(id)).filter((row): row is SearchCaseRow => Boolean(row));
+  return { items: await fetchCasesByRows(selectedRows), total: matches.length, page };
 }
 
 export async function fetchCaseById(caseId: string) {
@@ -205,7 +304,7 @@ export async function fetchCaseById(caseId: string) {
     .eq("id", caseId)
     .maybeSingle();
   if (error) throw error;
-  const cases = await fetchCasesByRows(data ? [data as CaseRow] : []);
+  const cases = await fetchCasesByRows(data ? [data as CaseRow] : [], true);
   return cases[0] ?? null;
 }
 
@@ -227,7 +326,8 @@ export async function fetchCompanyById(companyId: string) {
     .order("published_at", { ascending: false });
   if (casesError) throw casesError;
 
-  const companyImage = await getSignedImageUrl("company-assets", company.cover_image_path ?? company.logo_path);
+  const companyImagePath = company.cover_image_path ?? company.logo_path;
+  const companyImage = await getSignedImageUrl("company-assets", companyImagePath, "detail");
   return {
     company: {
       ...company,
@@ -236,8 +336,7 @@ export async function fetchCompanyById(companyId: string) {
       website: company.website_url ?? "",
       businessHours: company.business_hours,
       image: companyImage ?? "",
-      logoImage: await getSignedImageUrl("company-assets", company.logo_path),
-      coverImage: companyImage ?? undefined,
+      imagePath: companyImagePath ?? undefined,
       features: [],
     },
     cases: await fetchCasesByRows((caseRows ?? []) as CaseRow[]),
@@ -252,13 +351,14 @@ export async function fetchPublishedCompanies(): Promise<CompanySummary[]> {
     .neq("status", "SUSPENDED")
     .order("name");
   if (error) throw error;
-  return Promise.all((data ?? []).map(async (company) => ({
+  return (data ?? []).map((company) => ({
     id: company.id,
     name: company.name,
     address: company.address,
     description: company.description,
-    image: await getSignedImageUrl("company-assets", company.cover_image_path ?? company.logo_path) ?? "",
-  })));
+    image: "",
+    imagePath: company.cover_image_path ?? company.logo_path ?? undefined,
+  }));
 }
 
 export async function fetchFavoriteCases() {
@@ -305,9 +405,8 @@ export async function fetchManagedCompany(companyId: string) {
     founded: companyRow.founded_year ? `${companyRow.founded_year}年` : "",
     website: companyRow.website_url ?? "",
     businessHours: companyRow.business_hours,
-    image: await getSignedImageUrl("company-assets", companyRow.cover_image_path ?? companyRow.logo_path) ?? "",
-    logoImage: (await getSignedImageUrl("company-assets", companyRow.logo_path)) ?? undefined,
-    coverImage: (await getSignedImageUrl("company-assets", companyRow.cover_image_path)) ?? undefined,
+    image: await getSignedImageUrl("company-assets", companyRow.cover_image_path ?? companyRow.logo_path, "card") ?? "",
+    imagePath: companyRow.cover_image_path ?? companyRow.logo_path ?? undefined,
     features: [],
   };
   const memberList: CompanyMember[] = members.map((member) => ({
@@ -318,25 +417,24 @@ export async function fetchManagedCompany(companyId: string) {
   }));
 
   const managedRows = (caseRows ?? []) as CaseRow[];
-  const caseImageUrls = new Map<string, string[]>();
+  const caseImagePaths = new Map<string, string>();
   if (managedRows.length) {
     const { data: imageRows, error: imageError } = await supabase.from("case_images")
       .select("case_id, storage_path, display_order")
       .in("case_id", managedRows.map((row) => row.id))
       .order("display_order");
     if (imageError) throw imageError;
-    for (const image of imageRows ?? []) {
-      const url = await getSignedImageUrl("case-images", image.storage_path);
-      if (url) caseImageUrls.set(image.case_id, [...(caseImageUrls.get(image.case_id) ?? []), url]);
-    }
+    for (const image of imageRows ?? []) if (!caseImagePaths.has(image.case_id)) caseImagePaths.set(image.case_id, image.storage_path);
   }
+
+  const caseImageUrls = new Map(await Promise.all([...caseImagePaths.entries()].map(async ([caseId, path]) =>
+    [caseId, await getSignedImageUrl("case-images", path, "card")] as const)));
 
   return {
     company: profile,
     cases: managedRows.map((row) => {
-      const item = toCaseStudy(row, companyRow, { companyImage: profile.image || undefined });
-      const images = caseImageUrls.get(row.id) ?? [];
-      return { ...item, image: images[0] ?? item.image, images: images.length ? images : undefined };
+      const item = toCaseStudy(row, companyRow, { companyImage: profile.image || undefined, companyImagePath: profile.imagePath });
+      return { ...item, image: caseImageUrls.get(row.id) ?? item.image, imagePath: caseImagePaths.get(row.id) };
     }),
     members: memberList,
     messages: ((messageRows ?? []) as ContactMessageRow[]).map((message) => ({
