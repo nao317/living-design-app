@@ -5,6 +5,7 @@ import { Button } from "../atoms";
 import type { CaseStudy } from "../../features/cases/types";
 import { getAuthorizationContext } from "../../features/auth/authorization.client";
 import { isSupabaseConfigured } from "../../lib/supabase.client";
+import { StorageImage } from "../../features/media/storage-image";
 
 export function SearchBar({ defaultValue = "" }: { defaultValue?: string }) {
   return (
@@ -77,7 +78,7 @@ export function CaseCard({ item }: { item: CaseStudy }) {
   return (
     <article className="case-card">
       <Link to={"/cases/" + item.id} className="case-card__image" aria-label={item.title + "の画像を見る"}>
-        {item.image ? <img src={item.image} alt={item.title} /> : <span className="image-empty">画像未登録</span>}
+        {item.image ? <StorageImage src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /> : <span className="image-empty">画像未登録</span>}
       </Link>
       <div className="case-card__body">
         <h3><Link to={"/cases/" + item.id}>{item.title}</Link></h3>
@@ -95,7 +96,7 @@ export function CaseListItem({ item }: { item: CaseStudy }) {
   return (
     <article className="case-list-item">
       <Link to={"/cases/" + item.id} className="case-list-item__image">
-        {item.image ? <img src={item.image} alt={item.title} /> : <span className="image-empty">画像未登録</span>}
+        {item.image ? <StorageImage src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /> : <span className="image-empty">画像未登録</span>}
       </Link>
       <div className="case-list-item__body">
         <h2>{item.title}</h2>

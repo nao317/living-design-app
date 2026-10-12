@@ -6,6 +6,7 @@ import { FavoriteButton } from "../components/molecules";
 import { PublicLayout } from "../components/templates";
 import { fetchCaseById } from "../features/cases/public-data.client";
 import type { CaseStudy } from "../features/cases/types";
+import { StorageImage } from "../features/media/storage-image";
 
 export function loader() {
   return { item: null as CaseStudy | null };
@@ -30,12 +31,12 @@ export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
       <article className="public-page case-detail-page">
         <Link to="/search" className="back-link"><ArrowLeft size={16} />検索結果へ戻る</Link>
         <div className="before-after">
-          <figure><figcaption>BEFORE</figcaption>{beforeImage ? <img src={beforeImage} alt="施工前" /> : <div className="image-empty">画像未登録</div>}</figure>
-          <figure><figcaption>AFTER</figcaption>{afterImage ? <img src={afterImage} alt="施工後" /> : <div className="image-empty">画像未登録</div>}</figure>
+          <figure><figcaption>BEFORE</figcaption>{beforeImage ? <StorageImage src={beforeImage} storagePath={item.imagesPaths?.[1]} bucket="case-images" alt="施工前" loading="eager" fetchPriority="high" /> : <div className="image-empty">画像未登録</div>}</figure>
+          <figure><figcaption>AFTER</figcaption>{afterImage ? <StorageImage src={afterImage} storagePath={item.imagesPaths?.[0]} bucket="case-images" alt="施工後" loading="eager" fetchPriority="high" /> : <div className="image-empty">画像未登録</div>}</figure>
         </div>
         <div className="case-detail-layout">
           <aside className="detail-thumbnails">
-            {gallery.slice(2).map((image, index) => <img key={image} src={image} alt={`施工写真${index + 3}`} />)}
+            {gallery.slice(2).map((image, index) => <StorageImage key={image} src={image} storagePath={item.imagesPaths?.[index + 2]} bucket="case-images" alt={`施工写真${index + 3}`} />)}
           </aside>
           <main className="case-detail-main">
             <div className="case-detail-title">
@@ -51,7 +52,7 @@ export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
           </main>
           <aside className="case-company">
             <h2><Building2 size={18} />{item.company}</h2>
-            {item.companyImage ? <img src={item.companyImage} alt={item.company} /> : <div className="image-empty">企業画像未登録</div>}
+            {item.companyImage ? <StorageImage src={item.companyImage} storagePath={item.companyImagePath} bucket="company-assets" alt={item.company} /> : <div className="image-empty">企業画像未登録</div>}
             <Link className="button button--secondary" to={"/companies/" + item.companyId}>企業情報を見る</Link>
             <Link className="button button--primary" to={`/contact?companyId=${item.companyId}&caseId=${item.id}`}>企業に問い合わせる</Link>
           </aside>

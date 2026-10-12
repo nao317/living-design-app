@@ -5,6 +5,7 @@ import { Tag } from "../components/atoms";
 import { PublicLayout } from "../components/templates";
 import { fetchCompanyById } from "../features/cases/public-data.client";
 import type { CompanyProfile } from "../features/cases/types";
+import { StorageImage } from "../features/media/storage-image";
 
 export function loader() {
   return { company: null as CompanyProfile | null, cases: [] };
@@ -30,12 +31,12 @@ export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps)
             <p>{loaderData.company.description}</p>
             <div>{loaderData.company.features.map((feature) => <Tag key={feature}>{feature}</Tag>)}</div>
           </div>
-          {loaderData.company.image ? <img src={loaderData.company.image} alt={loaderData.company.name} /> : <div className="image-empty">企業画像未登録</div>}
+          {loaderData.company.image ? <StorageImage src={loaderData.company.image} storagePath={loaderData.company.imagePath} bucket="company-assets" alt={loaderData.company.name} loading="eager" fetchPriority="high" /> : <div className="image-empty">企業画像未登録</div>}
         </section>
         <div className="company-detail-body">
           <section className="company-works">
             <h2>施工事例</h2>
-            {loaderData.cases.map((item) => <Link key={item.id} to={"/cases/" + item.id}><img src={item.image} alt={item.title} /><span>{item.title}</span></Link>)}
+            {loaderData.cases.map((item) => <Link key={item.id} to={"/cases/" + item.id}><StorageImage src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /><span>{item.title}</span></Link>)}
           </section>
           <section className="company-information">
             <h2>会社情報</h2>

@@ -1,5 +1,5 @@
 import type { Route } from "./+types/company-case-new";
-import { data, Form } from "react-router";
+import { data, Form, Link } from "react-router";
 import { z } from "zod";
 import { Button } from "../components/atoms";
 import { Field } from "../components/molecules";
@@ -56,6 +56,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     return data({ error: "入力内容を確認してください。" }, { status: 400 });
   }
 
+  let savedCaseId: string | undefined;
   if (isSupabaseConfigured()) {
     const authorization = await getAuthorizationContext();
     const companyId = authorization?.memberships[0]?.companyId;
@@ -74,6 +75,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     if (error || typeof createdCaseId !== "string") {
       return data({ error: "施工事例を登録できませんでした。企業アカウントの所属企業と権限を確認してください。" }, { status: error?.code === "42501" ? 403 : 400 });
     }
+    savedCaseId = createdCaseId;
 
     const categoryIds = formData.getAll("categoryIds").filter((value): value is string => typeof value === "string" && value.length > 0);
     const styleIds = formData.getAll("styleIds").filter((value): value is string => typeof value === "string" && value.length > 0);
@@ -115,9 +117,15 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
         return data({ error: `施工事例の画像を保存できませんでした。${imageError.message}` }, { status: imageError.code === "42501" ? 403 : 400 });
       }
     }
+    if (formData.get("publish") === "on") {
+      const { error: publishError } = await supabase.from("construction_cases")
+        .update({ status: "PUBLISHED", published_at: new Date().toISOString() })
+        .eq("id", createdCaseId);
+      if (publishError) return data({ error: "事例は下書きとして保存されました。編集画面から公開してください。", caseId: createdCaseId }, { status: 400 });
+    }
   }
 
-  return data({ saved: true });
+  return data({ saved: true, caseId: savedCaseId });
 }
 
 export default function CompanyCaseNewRoute({ loaderData, actionData }: Route.ComponentProps) {
@@ -126,6 +134,7 @@ export default function CompanyCaseNewRoute({ loaderData, actionData }: Route.Co
       <header className="page-heading"><h1>施工事例の追加</h1><p>自社の施工事例を登録します。</p></header>
       {actionData && "saved" in actionData && actionData.saved ? <p className="success-message" role="status">施工事例を登録しました。</p> : null}
       {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
+      {actionData && "caseId" in actionData && actionData.caseId ? <p><Link to={`/company/cases/${actionData.caseId}/edit`}>登録した施工事例を編集する</Link></p> : null}
       <Form method="post" encType="multipart/form-data" className="edit-form">
         <section className="form-card">
           <div className="form-grid">
@@ -138,6 +147,7 @@ export default function CompanyCaseNewRoute({ loaderData, actionData }: Route.Co
           <Field label="概要"><textarea name="summary" rows={5} maxLength={2000} /></Field>
           <fieldset className="choice-list"><legend>リノベーション箇所</legend>{loaderData.categories.map((category) => <label key={category.id}><input type="checkbox" name="categoryIds" value={category.id} />{category.name}</label>)}</fieldset>
           <fieldset className="choice-list"><legend>こだわり条件</legend>{loaderData.styles.map((style) => <label key={style.id}><input type="checkbox" name="styleIds" value={style.id} />{style.name}</label>)}</fieldset>
+          <label className="choice-list"><input type="checkbox" name="publish" />登録後に公開する</label>
           <Field label="施工写真"><input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple /></Field>
           <div className="form-actions"><Button type="submit">登録する</Button></div>
         </section>

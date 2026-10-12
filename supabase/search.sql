@@ -44,21 +44,26 @@ as $$
     join public.companies company on company.id = c.company_id
     where c.status = 'PUBLISHED'
       and company.status = 'PUBLISHED'
-      and (trim(p_q) = '' or c.title ilike '%' || trim(p_q) || '%'
-        or c.summary ilike '%' || trim(p_q) || '%'
-        or c.area ilike '%' || trim(p_q) || '%'
-        or company.name ilike '%' || trim(p_q) || '%'
-        or company.address ilike '%' || trim(p_q) || '%'
-        or exists (
-          select 1 from public.case_categories cc
-          join public.categories category on category.id = cc.category_id
-          where cc.case_id = c.id and category.name ilike '%' || trim(p_q) || '%'
+      and (trim(p_q) = '' or not exists (
+        select 1 from regexp_split_to_table(replace(trim(p_q), chr(12288), ' '), '[[:space:]]+') as word(qword)
+        where not (
+          c.title ilike '%' || word.qword || '%'
+          or c.summary ilike '%' || word.qword || '%'
+          or c.area ilike '%' || word.qword || '%'
+          or company.name ilike '%' || word.qword || '%'
+          or company.address ilike '%' || word.qword || '%'
+          or exists (
+            select 1 from public.case_categories cc
+            join public.categories category on category.id = cc.category_id
+            where cc.case_id = c.id and category.name ilike '%' || word.qword || '%'
+          )
+          or exists (
+            select 1 from public.case_styles cs
+            join public.styles style on style.id = cs.style_id
+            where cs.case_id = c.id and style.name ilike '%' || word.qword || '%'
+          )
         )
-        or exists (
-          select 1 from public.case_styles cs
-          join public.styles style on style.id = cs.style_id
-          where cs.case_id = c.id and style.name ilike '%' || trim(p_q) || '%'
-        ))
+      ))
       and (trim(p_area) = '' or c.area ilike '%' || trim(p_area) || '%')
       and (trim(p_category) = '' or exists (
         select 1 from public.case_categories cc
