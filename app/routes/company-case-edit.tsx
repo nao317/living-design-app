@@ -8,7 +8,7 @@ import { DashboardLayout } from "../components/templates";
 import type { CaseStudy } from "../features/cases/types";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
-import { getSignedImageUrl, isImageFile, removeImages, uploadImage } from "../features/media/image-storage.client";
+import { getSignedImageUrl, isImageFile, MAX_CASE_IMAGES, MAX_IMAGE_BYTES, removeImages, uploadImage, validateCaseImageCount } from "../features/media/image-storage.client";
 import { StorageImage } from "../features/media/storage-image";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 
@@ -63,6 +63,17 @@ export async function clientAction({ request, params }: Route.ClientActionArgs) 
       return data({ error: "この施工事例は編集できません。" }, { status: 403 });
     }
 
+    const files = formData.getAll("images").filter(isImageFile);
+    const removeIds = formData.getAll("removeImageIds").filter((value): value is string => typeof value === "string");
+    if (files.length) {
+      const { data: existingImages, error: existingImagesError } = await supabase.from("case_images")
+        .select("id").eq("case_id", params.caseId);
+      if (existingImagesError) return data({ error: "登録済みの画像を取得できませんでした。" }, { status: 400 });
+      const remainingCount = (existingImages ?? []).filter((image) => !removeIds.includes(image.id)).length;
+      const imageCountError = validateCaseImageCount(remainingCount, files.length);
+      if (imageCountError) return data({ error: imageCountError }, { status: 400 });
+    }
+
     const { data: savedCase, error } = await supabase.from("construction_cases").update({
       title: result.data.title,
       area: result.data.area,
@@ -88,7 +99,6 @@ export async function clientAction({ request, params }: Route.ClientActionArgs) 
       if (styleError) return data({ error: "こだわり条件を更新できませんでした。" }, { status: 400 });
     }
 
-    const removeIds = formData.getAll("removeImageIds").filter((value): value is string => typeof value === "string");
     if (removeIds.length) {
       const { data: imageRows, error: imageRowsError } = await supabase.from("case_images")
         .select("id, storage_path")
@@ -105,10 +115,9 @@ export async function clientAction({ request, params }: Route.ClientActionArgs) 
       if (deleteRowsError) return data({ error: "画像情報を削除できませんでした。" }, { status: 400 });
     }
 
-    const files = formData.getAll("images").filter(isImageFile);
     const uploadedPaths: string[] = [];
     for (const file of files) {
-      const uploaded = await uploadImage("case-images", `${currentCase.company_id}/${params.caseId}`, file, 10 * 1024 * 1024);
+      const uploaded = await uploadImage("case-images", `${currentCase.company_id}/${params.caseId}`, file, MAX_IMAGE_BYTES);
       if (uploaded.error || !uploaded.path) {
         await removeImages("case-images", uploadedPaths);
         return data({ error: uploaded.error ?? "施工事例の画像をアップロードできませんでした。" }, { status: 400 });
@@ -226,7 +235,7 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
             </div>
           ))}
           <label className="case-photo-add">
-            <ImagePlus /><span>写真を追加</span>
+            <ImagePlus /><span>写真を追加</span><span>1枚1MB以内・合計{MAX_CASE_IMAGES}枚まで</span>
             <input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple />
           </label>
         </section>

@@ -1,6 +1,8 @@
 import { getSupabaseBrowserClient } from "../../lib/supabase.client";
 
 export const imageMimeTypes = ["image/jpeg", "image/png", "image/webp"] as const;
+export const MAX_IMAGE_BYTES = 1 * 1024 * 1024;
+export const MAX_CASE_IMAGES = 10;
 export const imagePresets = {
   thumbnail: { width: 480, quality: 75, resize: "contain" },
   card: { width: 800, quality: 78, resize: "contain" },
@@ -27,6 +29,12 @@ export function validateImageFile(file: File, maxBytes: number) {
   if (!imageMimeTypes.includes(file.type as (typeof imageMimeTypes)[number])) return "JPG、PNG、WebP形式の画像を選択してください。";
   if (file.size > maxBytes) return `画像は${Math.round(maxBytes / 1024 / 1024)}MB以内にしてください。`;
   return null;
+}
+
+export function validateCaseImageCount(existingCount: number, newCount: number) {
+  return existingCount + newCount > MAX_CASE_IMAGES
+    ? `施工写真は1事例につき${MAX_CASE_IMAGES}枚まで登録できます。`
+    : null;
 }
 
 async function prepareImageFile(file: File): Promise<File> {
