@@ -1,10 +1,10 @@
 # Supabase セットアップ
 
-この手順は、開発者がSupabase Dashboardで一度だけ行います。
+この手順は、開発者がSupabase Dashboardで一度だけ行います。`supabase/` はGitの追跡対象外です。必要なSQLファイルは管理者から別途入手してください。
 
 ## 1. データベースを作成する
 
-Supabase Dashboardの「SQL Editor」で supabase/setup.sql の全内容を実行してください。
+Supabase Dashboardの「SQL Editor」で、別途管理されている `supabase/setup.sql` の全内容を実行してください。
 続けて `supabase/search.sql` を実行してください。既存環境では `supabase/search.sql` だけを実行すれば、施工事例検索用の関数を追加できます。
 
 SQLには次の内容が含まれます。
@@ -17,7 +17,7 @@ SQLには次の内容が含まれます。
 
 `supabase/setup.sql` には `company-assets`（企業のメイン画像・ロゴ）と `case-images`（施工事例画像）の2つのStorage bucket作成も含まれます。既にデータベースを作成済みの環境でも、今回の変更を反映するためSQL Editorでファイル全体をもう一度実行してください。既存の企業アカウントが一覧に出ない問題も、この実行で承認済み企業を公開状態へ補正します。
 
-画像はアップロード時に、必要に応じて最大辺 2000px の WebP に変換します。元画像より小さくならない場合は元のファイルを保存します。公開画面では一覧・詳細に合わせたサイズの画像変換 URL を使います。Supabase の Image Transformations を利用できない環境では元画像に切り替わります。既存画像も軽く表示するには、Pro プラン以上の Supabase プロジェクトで Image Transformations を有効にしてください。
+画像はアップロード時に、必要に応じて最大辺 2000px の WebP に変換します。保存する画像は1枚1MB以内、施工写真は1事例につき10枚までです。変換後も1MBを超える画像は登録できません。Storage bucketの1ファイル上限も1MBに設定しています。既存環境へ反映するには `supabase/setup.sql` をSQL Editorで再実行してください。既存画像は削除されません。公開画面では一覧・詳細に合わせたサイズの画像変換 URL を使います。Supabase の Image Transformations を利用できない環境では元画像に切り替わります。既存画像も軽く表示するには、Pro プラン以上の Supabase プロジェクトで Image Transformations を有効にしてください。
 
 企業を作成したユーザーには、SQL内のトリガーが company_members の OWNER 権限を自動付与します。
 Service Role Keyをブラウザへ公開してはいけません。

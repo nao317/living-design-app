@@ -10,7 +10,7 @@ import { ProtectedRouteFallback } from "../features/auth/protected-route-fallbac
 import { getAuthorizationContext } from "../features/auth/authorization.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 import type { CompanyProfile } from "../features/cases/types";
-import { getSignedImageUrl, isImageFile, removeImages, uploadImage } from "../features/media/image-storage.client";
+import { getSignedImageUrl, isImageFile, MAX_IMAGE_BYTES, removeImages, uploadImage } from "../features/media/image-storage.client";
 import { StorageImage } from "../features/media/storage-image";
 
 const profileSchema = z.object({
@@ -57,7 +57,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       [logoFile, `${companyId}/logo`, "logo"] as const,
     ]) {
       if (!isImageFile(file)) continue;
-      const uploaded = await uploadImage("company-assets", directory, file, 5 * 1024 * 1024);
+      const uploaded = await uploadImage("company-assets", directory, file, MAX_IMAGE_BYTES);
       if (uploaded.error || !uploaded.path) {
         await removeImages("company-assets", uploadedPaths);
         return data({ error: uploaded.error ?? "画像をアップロードできませんでした。" }, { status: 400 });
@@ -164,10 +164,12 @@ export default function CompanyProfileEditRoute({ loaderData, actionData }: Rout
         <section className="company-media-fields">
           <label className="media-placeholder media-upload">
             {loaderData.company.coverImage ? <StorageImage src={loaderData.company.coverImage} storagePath={loaderData.company.coverImagePath} bucket="company-assets" alt="企業のメイン画像" /> : <><Plus /><span>メイン画像を追加</span></>}
+            <span>保存画像は1MB以内</span>
             <input type="file" name="coverImage" accept="image/jpeg,image/png,image/webp" />
           </label>
           <label className="media-placeholder media-upload">
             {loaderData.company.logoImage ? <StorageImage src={loaderData.company.logoImage} storagePath={loaderData.company.logoImagePath} bucket="company-assets" alt="企業ロゴ" /> : <><Camera /><span>ロゴ画像を追加</span></>}
+            <span>保存画像は1MB以内</span>
             <input type="file" name="logoImage" accept="image/jpeg,image/png,image/webp" />
           </label>
           <label className="media-remove"><input type="checkbox" name="removeCover" /> <Trash2 size={14} />メイン画像を削除</label>

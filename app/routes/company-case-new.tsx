@@ -6,7 +6,7 @@ import { Field } from "../components/molecules";
 import { DashboardLayout } from "../components/templates";
 import { requireAuthorization, getAuthorizationContext } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
-import { isImageFile, removeImages, uploadImage } from "../features/media/image-storage.client";
+import { isImageFile, MAX_CASE_IMAGES, MAX_IMAGE_BYTES, removeImages, uploadImage, validateCaseImageCount } from "../features/media/image-storage.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 
 const caseSchema = z.object({
@@ -55,6 +55,9 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   if (!result.success || parsePrice(result.data.priceMin) === undefined || parsePrice(result.data.priceMax) === undefined) {
     return data({ error: "入力内容を確認してください。" }, { status: 400 });
   }
+  const files = formData.getAll("images").filter(isImageFile);
+  const imageCountError = validateCaseImageCount(0, files.length);
+  if (imageCountError) return data({ error: imageCountError }, { status: 400 });
 
   let savedCaseId: string | undefined;
   if (isSupabaseConfigured()) {
@@ -94,10 +97,9 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       }
     }
 
-    const files = formData.getAll("images").filter(isImageFile);
     const uploadedPaths: string[] = [];
     for (const file of files) {
-      const uploaded = await uploadImage("case-images", `${companyId}/${createdCaseId}`, file, 10 * 1024 * 1024);
+      const uploaded = await uploadImage("case-images", `${companyId}/${createdCaseId}`, file, MAX_IMAGE_BYTES);
       if (uploaded.error || !uploaded.path) {
         await removeImages("case-images", uploadedPaths);
         await supabase.from("construction_cases").delete().eq("id", createdCaseId);
@@ -148,7 +150,7 @@ export default function CompanyCaseNewRoute({ loaderData, actionData }: Route.Co
           <fieldset className="choice-list"><legend>リノベーション箇所</legend>{loaderData.categories.map((category) => <label key={category.id}><input type="checkbox" name="categoryIds" value={category.id} />{category.name}</label>)}</fieldset>
           <fieldset className="choice-list"><legend>こだわり条件</legend>{loaderData.styles.map((style) => <label key={style.id}><input type="checkbox" name="styleIds" value={style.id} />{style.name}</label>)}</fieldset>
           <label className="choice-list"><input type="checkbox" name="publish" />登録後に公開する</label>
-          <Field label="施工写真"><input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple /></Field>
+          <Field label="施工写真" hint={`保存する画像は1枚1MB以内、1事例につき${MAX_CASE_IMAGES}枚まで。`}><input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple /></Field>
           <div className="form-actions"><Button type="submit">登録する</Button></div>
         </section>
       </Form>
