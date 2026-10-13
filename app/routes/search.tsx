@@ -1,6 +1,6 @@
 import type { Route } from "./+types/search";
 import { Pagination } from "../components/molecules";
-import { useLocation, useNavigation } from "react-router";
+import { useNavigation } from "react-router";
 import { CaseList, Filters } from "../components/organisms";
 import { PublicLayout } from "../components/templates";
 import { hasInvalidPriceRange, parseSearchParams } from "../features/search/schema";
@@ -46,10 +46,7 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
 clientLoader.hydrate = true as const;
 
 export function HydrateFallback() {
-  const location = useLocation();
-  const filters = parseSearchParams(new URLSearchParams(location.search));
   return <PublicLayout><div className="public-page search-page"><div className="search-layout">
-    <Filters filters={filters} />
     <section className="search-results" aria-labelledby="result-heading">
       <div className="search-results__header"><h1 id="result-heading">検索結果</h1><p role="status">施工事例を読み込んでいます…</p></div>
     </section>
