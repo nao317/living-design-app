@@ -34,8 +34,8 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
   if (!isSupabaseConfigured()) return serverData;
   const supabase = getSupabaseBrowserClient();
   const [{ data: categories, error: categoriesError }, { data: styles, error: stylesError }] = await Promise.all([
-    supabase.from("categories").select("id, name").order("display_order"),
-    supabase.from("styles").select("id, name").order("display_order"),
+    supabase.from("categories").select("id, name").eq("is_active", true).order("display_order"),
+    supabase.from("styles").select("id, name").eq("is_active", true).order("display_order"),
   ]);
   if (categoriesError) throw categoriesError;
   if (stylesError) throw stylesError;
