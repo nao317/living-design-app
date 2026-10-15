@@ -185,8 +185,8 @@ export async function fetchSearchOptions() {
   if (!isSupabaseConfigured()) return { categories: [] as SearchOption[], styles: [] as SearchOption[] };
   const supabase = getSupabaseBrowserClient();
   const [categories, styles] = await Promise.all([
-    supabase.from("categories").select("slug, name").order("display_order"),
-    supabase.from("styles").select("slug, name").order("display_order"),
+    supabase.from("categories").select("slug, name").eq("is_active", true).order("display_order"),
+    supabase.from("styles").select("slug, name").eq("is_active", true).order("display_order"),
   ]);
   if (categories.error) throw categories.error;
   if (styles.error) throw styles.error;
