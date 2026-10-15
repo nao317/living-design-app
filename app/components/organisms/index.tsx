@@ -107,11 +107,13 @@ export function Sidebar({ type = "user" }: { type?: "user" | "company" | "admin"
     ? [
         ["/company", "ダッシュボード", Home],
         ["/company/profile/edit", "企業情報の編集", PencilLine],
+        ["/company/tags", "検索項目の変更申請", PencilLine],
         ["/company/cases/new", "施工事例の追加", Plus],
       ] as const
     : type === "admin"
       ? [
           ["/admin", "管理画面", Home],
+          ["/admin/tags", "検索項目の申請審査", PencilLine],
           ["/search", "公開事例", Search],
         ] as const
       : [

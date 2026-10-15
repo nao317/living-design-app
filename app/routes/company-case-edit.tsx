@@ -35,8 +35,8 @@ export function loader({ params }: Route.LoaderArgs) {
     item: null as CaseStudy | null,
     caseId: params.caseId ?? "",
     caseImages: [] as CaseImageView[],
-    categories: [] as Array<{ id: string; name: string }>,
-    styles: [] as Array<{ id: string; name: string }>,
+    categories: [] as Array<{ id: string; name: string; is_active: boolean }>,
+    styles: [] as Array<{ id: string; name: string; is_active: boolean }>,
     selectedCategoryIds: [] as string[],
     selectedStyleIds: [] as string[],
   };
@@ -177,8 +177,8 @@ export async function clientLoader({ request, params, serverLoader }: Route.Clie
     url: await getSignedImageUrl("case-images", image.storage_path, "thumbnail"),
   })))).filter((image): image is CaseImageView => Boolean(image.url));
   const [{ data: categories, error: categoriesError }, { data: styles, error: stylesError }, { data: selectedCategories, error: selectedCategoriesError }, { data: selectedStyles, error: selectedStylesError }] = await Promise.all([
-    supabase.from("categories").select("id, name").order("display_order"),
-    supabase.from("styles").select("id, name").order("display_order"),
+    supabase.from("categories").select("id, name, is_active").order("display_order"),
+    supabase.from("styles").select("id, name, is_active").order("display_order"),
     supabase.from("case_categories").select("category_id").eq("case_id", params.caseId),
     supabase.from("case_styles").select("style_id").eq("case_id", params.caseId),
   ]);
@@ -189,8 +189,8 @@ export async function clientLoader({ request, params, serverLoader }: Route.Clie
   return {
     ...serverData,
     caseImages,
-    categories: categories ?? [],
-    styles: styles ?? [],
+    categories: (categories ?? []).filter((row) => row.is_active || (selectedCategories ?? []).some((selected) => selected.category_id === row.id)),
+    styles: (styles ?? []).filter((row) => row.is_active || (selectedStyles ?? []).some((selected) => selected.style_id === row.id)),
     selectedCategoryIds: (selectedCategories ?? []).map((row) => row.category_id),
     selectedStyleIds: (selectedStyles ?? []).map((row) => row.style_id),
     item: {
@@ -249,8 +249,8 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
           </div>
           <Field label="概要"><textarea name="summary" rows={4} defaultValue={loaderData.item.summary} /></Field>
           <Field label="公開状態"><select name="status" defaultValue={loaderData.item.status ?? "DRAFT"}><option value="DRAFT">下書き</option><option value="PUBLISHED">公開</option><option value="ARCHIVED">非公開（アーカイブ）</option></select></Field>
-          <fieldset className="choice-list"><legend>リノベーション箇所</legend>{loaderData.categories.map((category) => <label key={category.id}><input type="checkbox" name="categoryIds" value={category.id} defaultChecked={loaderData.selectedCategoryIds.includes(category.id)} />{category.name}</label>)}</fieldset>
-          <fieldset className="choice-list"><legend>こだわり条件</legend>{loaderData.styles.map((style) => <label key={style.id}><input type="checkbox" name="styleIds" value={style.id} defaultChecked={loaderData.selectedStyleIds.includes(style.id)} />{style.name}</label>)}</fieldset>
+          <fieldset className="choice-list"><legend>リノベーション箇所</legend>{loaderData.categories.map((category) => <label key={category.id}><input type="checkbox" name="categoryIds" value={category.id} defaultChecked={loaderData.selectedCategoryIds.includes(category.id)} />{category.name}{!category.is_active ? "（現在は非表示）" : ""}</label>)}</fieldset>
+          <fieldset className="choice-list"><legend>こだわり条件</legend>{loaderData.styles.map((style) => <label key={style.id}><input type="checkbox" name="styleIds" value={style.id} defaultChecked={loaderData.selectedStyleIds.includes(style.id)} />{style.name}{!style.is_active ? "（現在は非表示）" : ""}</label>)}</fieldset>
           <div className="form-actions"><Button type="submit">更新する</Button></div>
         </section>
       </Form>
