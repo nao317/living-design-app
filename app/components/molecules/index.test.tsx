@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CaseCard, FavoriteButton, Pagination } from "./index";
 
 const state = vi.hoisted(() => ({ authorization: null as null | { userId: string; accountRole: string }, ids: new Set<string>() }));
-vi.mock("../../features/favorites/favorites-context", () => ({ useFavorites: () => ({ ...state, ready: true, error: false }) }));
+vi.mock("../../features/favorites/favorites-context", () => ({ useFavorites: () => ({ state, meta: { ready: true, error: false } }) }));
 beforeEach(() => { state.authorization = null; state.ids = new Set(); });
 
 const caseItem = {
@@ -24,8 +24,9 @@ describe("FavoriteButton", () => {
   it("未ログイン時は元の画面を保持してログインへ案内する", async () => {
     const router = createMemoryRouter([{ path: "/", element: <FavoriteButton caseId="case-id" /> }, { path: "/login", element: <h1>ログイン</h1> }], { initialEntries: ["/?area=飯塚"] });
     render(<RouterProvider router={router} />);
-    const button = screen.getByRole("button", { name: "お気に入りに追加" });
-    fireEvent.click(button);
+    const link = screen.getByRole("link", { name: "ログインしてお気に入りに追加" });
+    expect(link).toHaveAttribute("href", "/login?redirectTo=%2F%3Farea%3D%E9%A3%AF%E5%A1%9A");
+    fireEvent.click(link);
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
     expect(new URLSearchParams(router.state.location.search).get("redirectTo")).toBe("/?area=飯塚");
   });

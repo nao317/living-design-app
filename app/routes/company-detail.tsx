@@ -35,12 +35,12 @@ export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps)
             <p>{loaderData.company.description}</p>
             <div>{loaderData.company.features.map((feature) => <Tag key={feature}>{feature}</Tag>)}</div>
           </div>
-          {loaderData.company.image ? <StorageImage src={loaderData.company.image} storagePath={loaderData.company.imagePath} bucket="company-assets" alt={loaderData.company.name} loading="eager" fetchPriority="high" /> : <div className="image-empty">企業画像未登録</div>}
+          {loaderData.company.image ? <StorageImage width={580} height={220} src={loaderData.company.image} storagePath={loaderData.company.imagePath} bucket="company-assets" alt={loaderData.company.name} loading="eager" fetchPriority="high" /> : <div className="image-empty">企業画像未登録</div>}
         </section>
         <div className="company-detail-body">
           <section className="company-works">
             <h2>施工事例</h2>
-            {loaderData.cases.map((item) => <Link key={item.id} to={"/cases/" + item.id}><StorageImage src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /><span>{item.title}</span></Link>)}
+            {loaderData.cases.length ? loaderData.cases.map((item) => <Link key={item.id} to={"/cases/" + item.id}><StorageImage width={85} height={60} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /><span>{item.title}</span></Link>) : <p>公開中の施工事例はまだありません。</p>}
           </section>
           <section className="company-information">
             <h2>会社情報</h2>
@@ -51,7 +51,7 @@ export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps)
               <div><dt>電話番号</dt><dd>{loaderData.company.phone}</dd></div>
               <div><dt>設立</dt><dd>{loaderData.company.founded}</dd></div>
             </dl>
-            <a className="button button--secondary" href={loaderData.company.website}>ホームページ <ExternalLink size={14} /></a>
+            {loaderData.company.website ? <a className="button button--secondary" href={loaderData.company.website}>ホームページ <ExternalLink aria-hidden="true" size={14} /></a> : null}
             <Link className="button button--primary" to={"/contact?companyId=" + loaderData.company.id}>問い合わせる</Link>
           </section>
         </div>

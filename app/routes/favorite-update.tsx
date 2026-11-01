@@ -20,7 +20,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       ? await supabase.from("favorites").upsert({ user_id: authorization.userId, case_id: caseId }, { onConflict: "user_id,case_id", ignoreDuplicates: true })
       : await supabase.from("favorites").delete().eq("user_id", authorization.userId).eq("case_id", caseId);
     if (error) return data({ error: "お気に入りを保存できませんでした。時間をおいて再度お試しください。" }, { status: 400 });
-    window.dispatchEvent(new CustomEvent("favorites-changed", { detail: { caseId, saved } }));
+    window.dispatchEvent(new CustomEvent("favorites-changed", { detail: { userId: authorization.userId, caseId, saved } }));
     return { caseId, saved, error: "" };
   } catch (error) {
     if (error instanceof Response) throw error;

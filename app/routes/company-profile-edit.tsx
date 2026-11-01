@@ -165,17 +165,17 @@ export default function CompanyProfileEditRoute({ loaderData, actionData }: Rout
       <ManagedForm protect method="post" encType="multipart/form-data" className="edit-form">
         <section className="company-media-fields">
           <label className="media-placeholder media-upload">
-            {loaderData.company.coverImage ? <StorageImage src={loaderData.company.coverImage} storagePath={loaderData.company.coverImagePath} bucket="company-assets" alt="企業のメイン画像" /> : <><Plus /><span>メイン画像を追加</span></>}
+            {loaderData.company.coverImage ? <StorageImage width={600} height={225} src={loaderData.company.coverImage} storagePath={loaderData.company.coverImagePath} bucket="company-assets" alt="企業のメイン画像" /> : <><Plus aria-hidden="true" /><span>メイン画像を追加</span></>}
             <span>保存画像は1MB以内</span>
             <input type="file" name="coverImage" accept="image/jpeg,image/png,image/webp" />
           </label>
           <label className="media-placeholder media-upload">
-            {loaderData.company.logoImage ? <StorageImage src={loaderData.company.logoImage} storagePath={loaderData.company.logoImagePath} bucket="company-assets" alt="企業ロゴ" /> : <><Camera /><span>ロゴ画像を追加</span></>}
+            {loaderData.company.logoImage ? <StorageImage width={200} height={200} src={loaderData.company.logoImage} storagePath={loaderData.company.logoImagePath} bucket="company-assets" alt="企業ロゴ" /> : <><Camera aria-hidden="true" /><span>ロゴ画像を追加</span></>}
             <span>保存画像は1MB以内</span>
             <input type="file" name="logoImage" accept="image/jpeg,image/png,image/webp" />
           </label>
-          <label className="media-remove"><input type="checkbox" name="removeCover" /> <Trash2 size={14} />メイン画像を削除</label>
-          <label className="media-remove"><input type="checkbox" name="removeLogo" /> <Trash2 size={14} />ロゴ画像を削除</label>
+          <label className="media-remove"><input type="checkbox" name="removeCover" /> <Trash2 aria-hidden="true" size={14} />メイン画像を削除</label>
+          <label className="media-remove"><input type="checkbox" name="removeLogo" /> <Trash2 aria-hidden="true" size={14} />ロゴ画像を削除</label>
         </section>
         <section className="form-card">
           <h2>企業情報</h2>
@@ -189,7 +189,7 @@ export default function CompanyProfileEditRoute({ loaderData, actionData }: Rout
             <Field label="営業時間"><input name="businessHours" defaultValue={loaderData.company.businessHours} /></Field>
           </div>
           <Field label="企業紹介"><textarea name="description" rows={3} defaultValue={loaderData.company.description} /></Field>
-          <div className="feature-editor"><span>アピールポイント</span>{loaderData.company.features.map((feature) => <Tag key={feature}>{feature}</Tag>)}<button type="button"><Plus size={14} />追加</button></div>
+          <div className="feature-editor"><span>アピールポイント</span>{loaderData.company.features.map((feature) => <Tag key={feature}>{feature}</Tag>)}<button type="button"><Plus aria-hidden="true" size={14} />追加</button></div>
           <div className="form-actions"><SubmitButton>更新する</SubmitButton></div>
         </section>
       </ManagedForm>

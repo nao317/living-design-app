@@ -1,21 +1,21 @@
 import { Building2, Heart, MapPin, Search } from "lucide-react";
-import { Form, Link, useFetcher, useLocation, useNavigate, useSearchParams } from "react-router";
+import { Form, Link, useFetcher, useLocation, useSearchParams } from "react-router";
 import { cloneElement, isValidElement, useId, type ReactNode, type ReactElement, type InputHTMLAttributes } from "react";
 import { Button } from "../atoms";
 import type { CaseStudy } from "../../features/cases/types";
 import { useFavorites } from "../../features/favorites/favorites-context";
-import { useFormState } from "../../features/forms/managed-form";
+import { useFieldErrors } from "../../features/forms/managed-form";
 import type { clientAction as favoriteAction } from "../../routes/favorite-update";
 import { StorageImage } from "../../features/media/storage-image";
 
 export function SearchBar({ defaultValue = "" }: { defaultValue?: string }) {
   return (
-    <Form className="search-bar" method="get" action="/search">
+    <Form key={defaultValue} className="search-bar" method="get" action="/search">
       <Search size={18} aria-hidden="true" />
       <input
         name="q"
         aria-label="施工事例を検索"
-        placeholder="キッチンリフォーム、地域、会社名から検索"
+        placeholder="例：キッチン・飯塚市…"
         defaultValue={defaultValue}
         autoComplete="off"
       />
@@ -26,12 +26,12 @@ export function SearchBar({ defaultValue = "" }: { defaultValue?: string }) {
 
 export function CompanySearchBar({ defaultValue = "" }: { defaultValue?: string }) {
   return (
-    <Form className="search-bar company-search-bar" method="get" action="/companies">
+    <Form key={defaultValue} className="search-bar company-search-bar" method="get" action="/companies">
       <Search size={18} aria-hidden="true" />
       <input
         name="q"
         aria-label="企業名や所在地を検索"
-        placeholder="企業名や所在地から検索"
+        placeholder="例：企業名・飯塚市…"
         defaultValue={defaultValue}
         autoComplete="off"
       />
@@ -41,15 +41,16 @@ export function CompanySearchBar({ defaultValue = "" }: { defaultValue?: string 
 }
 
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
-  const id = useId();
-  const { errors } = useFormState();
+  const generatedId = useId();
+  const errors = useFieldErrors();
   const control = isValidElement(children) ? children as ReactElement<InputHTMLAttributes<HTMLInputElement>> : null;
+  const id = control?.props.id ?? generatedId;
   const error = control?.props.name ? errors[control.props.name] : undefined;
-  const describedBy = [hint ? `${id}-hint` : "", error ? `${id}-error` : ""].filter(Boolean).join(" ");
+  const describedBy = [control?.props["aria-describedby"], hint ? `${id}-hint` : "", error ? `${id}-error` : ""].filter(Boolean).join(" ");
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
-      {control ? cloneElement(control, { id, "aria-invalid": error ? true : undefined, "aria-describedby": describedBy || undefined }) : children}
+      {control ? cloneElement(control, { id, autoComplete: control.props.autoComplete ?? "off", "aria-invalid": error ? true : control.props["aria-invalid"], "aria-describedby": describedBy || undefined }) : children}
       {hint ? <small id={`${id}-hint`}>{hint}</small> : null}
       {error ? <small className="field-error" id={`${id}-error`} role="alert">{error}</small> : null}
     </div>
@@ -57,13 +58,16 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 export function FavoriteButton({ caseId, compact = false }: { caseId: string; compact?: boolean }) {
-  const { ready, authorization, ids, error } = useFavorites();
+  const { state: { authorization, ids }, meta: { ready, error } } = useFavorites();
   const fetcher = useFetcher<typeof favoriteAction>({ key: `favorite:${caseId}` });
-  const navigate = useNavigate();
   const location = useLocation();
   const active = ids.has(caseId);
   const pending = fetcher.state !== "idle";
   if (authorization && authorization.accountRole !== "GENERAL") return null;
+  if (ready && !error && !authorization) return <Link
+    className="favorite" to={`/login?redirectTo=${encodeURIComponent(location.pathname + location.search)}`}
+    aria-label="ログインしてお気に入りに追加"
+  ><Heart size={15} aria-hidden="true" />{compact ? null : "お気に入りへ"}</Link>;
 
   return (
     <span className="favorite-control">
@@ -72,10 +76,6 @@ export function FavoriteButton({ caseId, compact = false }: { caseId: string; co
       className={"favorite " + (active ? "is-active" : "")}
       disabled={!ready || pending || error}
       onClick={() => {
-        if (!authorization) {
-          navigate(`/login?redirectTo=${encodeURIComponent(location.pathname + location.search)}`);
-          return;
-        }
         void fetcher.submit({ caseId, saved: String(!active), redirectTo: location.pathname + location.search }, { method: "post", action: "/favorites/update" });
       }}
       aria-label={active ? "お気に入りから削除" : "お気に入りに追加"}
@@ -94,14 +94,14 @@ export function CaseCard({ item }: { item: CaseStudy }) {
   return (
     <article className="case-card">
       <Link to={"/cases/" + item.id} className="case-card__image" aria-label={item.title + "の画像を見る"}>
-        {item.image ? <StorageImage src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /> : <span className="image-empty">画像未登録</span>}
+        {item.image ? <StorageImage width={800} height={472} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /> : <span className="image-empty">画像未登録</span>}
       </Link>
       <div className="case-card__body">
         <h3><Link to={"/cases/" + item.id}>{item.title}</Link></h3>
         {item.status && item.status !== "PUBLISHED" ? <p className="case-card__status">{item.status === "DRAFT" ? "下書き・検索には表示されません" : "非公開・検索には表示されません"}</p> : null}
-        <p><Building2 size={13} />{item.company}</p>
+        <p><Building2 aria-hidden="true" size={13} />{item.company}</p>
         <div className="case-card__meta">
-          <span><MapPin size={13} />{item.area}</span>
+          <span><MapPin aria-hidden="true" size={13} />{item.area}</span>
           <FavoriteButton caseId={item.id} compact />
         </div>
       </div>
@@ -111,22 +111,23 @@ export function CaseCard({ item }: { item: CaseStudy }) {
 
 export function CaseListItem({ item }: { item: CaseStudy }) {
   const location = useLocation();
-  const detailState = location.pathname === "/search" ? { searchReturnTo: location.pathname + location.search } : undefined;
+  const returnTo = location.pathname === "/search" ? location.pathname + location.search : null;
+  const detailUrl = `/cases/${item.id}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`;
   return (
     <article className="case-list-item">
-      <Link to={"/cases/" + item.id} state={detailState} className="case-list-item__image">
-        {item.image ? <StorageImage src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /> : <span className="image-empty">画像未登録</span>}
+      <Link to={detailUrl} className="case-list-item__image">
+        {item.image ? <StorageImage width={190} height={112} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /> : <span className="image-empty">画像未登録</span>}
       </Link>
       <div className="case-list-item__body">
-        <h2><Link to={"/cases/" + item.id} state={detailState}>{item.title}</Link></h2>
-        <p className="case-list-item__company"><Building2 size={14} />{item.company}</p>
+        <h2><Link to={detailUrl}>{item.title}</Link></h2>
+        <p className="case-list-item__company"><Building2 aria-hidden="true" size={14} />{item.company}</p>
         <p>{item.categories.join("・")} / {item.area}</p>
         <p>費用目安：{item.price} / 施工期間：{item.period}</p>
       </div>
       <div className="case-list-item__actions">
         <Link className="button button--secondary" to={"/companies/" + item.companyId}>企業情報を見る</Link>
         <FavoriteButton caseId={item.id} />
-        <Link className="button button--primary" to={"/cases/" + item.id} state={detailState}>詳細を見る</Link>
+        <Link className="button button--primary" to={detailUrl}>詳細を見る</Link>
       </div>
     </article>
   );

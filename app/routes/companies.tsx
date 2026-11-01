@@ -47,7 +47,7 @@ export default function CompaniesRoute({ loaderData }: Route.ComponentProps) {
             <div className="company-directory">
               {loaderData.items.map((company) => (
                 <article className="company-directory__item" key={company.id}>
-                  {company.imagePath ? <StorageImage src={company.image} storagePath={company.imagePath} bucket="company-assets" preset="card" alt="" /> : <div className="image-empty">企業画像未登録</div>}
+                  {company.imagePath ? <StorageImage width={150} height={150} src={company.image} storagePath={company.imagePath} bucket="company-assets" preset="card" alt="" /> : <div className="image-empty">企業画像未登録</div>}
                   <div>
                     <h2>{company.name}</h2>
                     <p>{company.description}</p>
