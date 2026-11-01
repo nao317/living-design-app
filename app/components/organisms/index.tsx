@@ -1,53 +1,21 @@
 import { Heart, Home, House, Menu, PencilLine, Plus, Search, X } from "lucide-react";
 import { Form, Link, NavLink, useNavigate } from "react-router";
 import { useEffect, useRef, useState } from "react";
-import type { User } from "@supabase/supabase-js";
 import type { CaseStudy } from "../../features/cases/types";
 import type { SearchParams } from "../../features/search/schema";
 import type { SearchOption } from "../../features/cases/public-data.client";
-import { getSupabaseBrowserClient, isSupabaseConfigured } from "../../lib/supabase.client";
+import { getSupabaseBrowserClient } from "../../lib/supabase.client";
 import { CaseCard, CaseListItem } from "../molecules";
 import { Button } from "../atoms";
-import { getAuthorizationContext, type AuthorizationContext } from "../../features/auth/authorization.client";
+import { useAuth } from "../../features/auth/auth-context";
 
 export function Header() {
   const [open, setOpen] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [authorization, setAuthorization] = useState<AuthorizationContext | null>(null);
+  const { state: { user, authorization } } = useAuth();
+  const [logoutError, setLogoutError] = useState("");
   const navigate = useNavigate();
   const menuButton = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    if (!isSupabaseConfigured()) return;
-
-    const supabase = getSupabaseBrowserClient();
-    async function refreshAuthorization(nextUser: User | null) {
-      if (!nextUser) {
-        setAuthorization(null);
-        return;
-      }
-
-      try {
-        setAuthorization(await getAuthorizationContext());
-      } catch {
-        setAuthorization(null);
-      }
-    }
-
-    void supabase.auth.getSession().then(({ data }) => {
-      const nextUser = data.session?.user ?? null;
-      setUser(nextUser);
-      void refreshAuthorization(nextUser);
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      const nextUser = session?.user ?? null;
-      setUser(nextUser);
-      void refreshAuthorization(nextUser);
-    });
-
-    return () => data.subscription.unsubscribe();
-  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -85,11 +53,13 @@ export function Header() {
   }, [open]);
 
   async function handleLogout() {
-    const supabase = getSupabaseBrowserClient();
-    await supabase.auth.signOut();
-    setOpen(false);
-    setAuthorization(null);
-    navigate("/", { replace: true });
+    setLogoutError("");
+    try {
+      const { error } = await getSupabaseBrowserClient().auth.signOut();
+      if (error) throw error;
+      setOpen(false);
+      navigate("/", { replace: true });
+    } catch { setLogoutError("ログアウトできませんでした。接続を確認して再度お試しください。"); }
   }
 
   return (
@@ -115,6 +85,7 @@ export function Header() {
             <Link to="/login" className="header-login">ログイン/会員登録</Link>
           )}
         </nav>
+        {logoutError ? <p role="alert" className="field-error">{logoutError}</p> : null}
         <button
           type="button"
           ref={menuButton}
@@ -154,7 +125,7 @@ export function Sidebar({ type = "user" }: { type?: "user" | "company" | "admin"
     <aside className="sidebar" aria-label={type === "company" ? "企業メニュー" : type === "admin" ? "管理者メニュー" : "マイページメニュー"}>
       <nav>
         {links.map(([href, label, Icon]) => (
-          <NavLink key={href} to={href} end><Icon size={16} />{label}</NavLink>
+          <NavLink key={href} to={href} end><Icon aria-hidden="true" size={16} />{label}</NavLink>
         ))}
       </nav>
     </aside>
@@ -183,8 +154,8 @@ export function Filters({ compact = false, filters, categories = [], styles = []
     <div id="search-filters" className="filter-panel__content">
     <Form key={filters ? JSON.stringify(filters) : "home"} method="get" action="/search" onSubmit={() => setOpen(false)} className={compact ? "filters filters--home" : "filters"}>
       <h2>絞り込み検索</h2>
-      <label>キーワード<input name="q" defaultValue={filters?.q ?? ""} maxLength={100} placeholder="施工箇所・地域・会社名" /></label>
-      <label>施工地域<input name="area" defaultValue={filters?.area ?? ""} maxLength={120} placeholder="地域を入力" /></label>
+      <label>キーワード<input name="q" autoComplete="off" defaultValue={filters?.q ?? ""} maxLength={100} placeholder="例：キッチン…" /></label>
+      <label>施工地域<input name="area" autoComplete="off" defaultValue={filters?.area ?? ""} maxLength={120} placeholder="例：飯塚市…" /></label>
       <label>リノベーション箇所
         <select name="category" defaultValue={filters?.category ?? ""}>
           <option value="">選択してください</option>
@@ -192,7 +163,7 @@ export function Filters({ compact = false, filters, categories = [], styles = []
         </select>
       </label>
       <fieldset className="budget-field"><legend>予算（円）</legend>
-        <span className="range-fields"><input name="priceMin" type="number" min="0" max="2147483647" inputMode="numeric" defaultValue={filters?.priceMin ?? ""} aria-label="予算下限（円）" placeholder="下限" /><span aria-hidden="true">〜</span><input name="priceMax" type="number" min="0" max="2147483647" inputMode="numeric" defaultValue={filters?.priceMax ?? ""} aria-label="予算上限（円）" placeholder="上限" /></span>
+        <span className="range-fields"><input name="priceMin" type="number" min="0" max="2147483647" inputMode="numeric" autoComplete="off" defaultValue={filters?.priceMin ?? ""} aria-label="予算下限（円）" placeholder="例：100000…" /><span aria-hidden="true">〜</span><input name="priceMax" type="number" min="0" max="2147483647" inputMode="numeric" autoComplete="off" defaultValue={filters?.priceMax ?? ""} aria-label="予算上限（円）" placeholder="例：500000…" /></span>
       </fieldset>
       <label>施工期間
         <select name="period" defaultValue={filters?.period ?? ""}>

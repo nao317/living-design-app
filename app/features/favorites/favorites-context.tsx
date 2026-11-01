@@ -1,43 +1,48 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { getAuthorizationContext, type AuthorizationContext } from "../auth/authorization.client";
-import { getSupabaseBrowserClient, isSupabaseConfigured } from "../../lib/supabase.client";
+import { createContext, use, useEffect, useState, type ReactNode } from "react";
+import { getSupabaseBrowserClient } from "../../lib/supabase.client";
+import { useAuth } from "../auth/auth-context";
+import type { AuthorizationContext } from "../auth/authorization.client";
 
-type FavoriteState = { ready: boolean; authorization: AuthorizationContext | null; ids: Set<string>; error: boolean };
-const FavoritesContext = createContext<FavoriteState>({ ready: true, authorization: null, ids: new Set(), error: false });
-export function useFavorites() { return useContext(FavoritesContext); }
+type FavoritesContextValue = {
+  state: { authorization: AuthorizationContext | null; ids: ReadonlySet<string> };
+  meta: { ready: boolean; error: boolean };
+};
+type LoadedFavorites = { userId: string; ids: ReadonlySet<string>; error: boolean };
+const emptyIds: ReadonlySet<string> = new Set();
+const FavoritesContext = createContext<FavoritesContextValue>({ state: { authorization: null, ids: emptyIds }, meta: { ready: true, error: false } });
+export function useFavorites() { return use(FavoritesContext); }
 
 export function FavoritesProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<FavoriteState>({ ready: false, authorization: null, ids: new Set(), error: false });
+  const { state: { authorization }, meta: auth } = useAuth();
+  const userId = authorization?.accountRole === "GENERAL" ? authorization.userId : null;
+  const [loaded, setLoaded] = useState<LoadedFavorites>();
+
   useEffect(() => {
+    if (!userId) return;
     let active = true;
-    let version = 0;
-    async function refresh() {
-      const current = ++version;
-      try {
-        const authorization = await getAuthorizationContext();
-        const ids = new Set<string>();
-        if (authorization?.accountRole === "GENERAL") {
-          const { data, error } = await getSupabaseBrowserClient().from("favorites").select("case_id").eq("user_id", authorization.userId);
-          if (error) throw error;
-          for (const row of data ?? []) ids.add(row.case_id);
-        }
-        if (active && current === version) setState({ ready: true, authorization, ids, error: false });
-      } catch {
-        if (active && current === version) setState({ ready: true, authorization: null, ids: new Set(), error: true });
-      }
-    }
+    let changedDuringLoad = false;
+    void getSupabaseBrowserClient().from("favorites").select("case_id").eq("user_id", userId).then(({ data, error }) => {
+      if (!active || changedDuringLoad) return;
+      setLoaded({ userId, ids: new Set((data ?? []).map((row) => row.case_id as string)), error: Boolean(error) });
+    }, () => { if (active) setLoaded({ userId, ids: emptyIds, error: true }); });
+
     const changed = (event: Event) => {
-      const { caseId, saved } = (event as CustomEvent<{ caseId: string; saved: boolean }>).detail;
-      setState((current) => {
-        const ids = new Set(current.ids);
-        if (saved) ids.add(caseId); else ids.delete(caseId);
-        return { ...current, ids };
+      const detail = (event as CustomEvent<{ userId: string; caseId: string; saved: boolean }>).detail;
+      if (detail.userId !== userId) return;
+      changedDuringLoad = true;
+      setLoaded((current) => {
+        const ids = new Set(current?.userId === userId ? current.ids : []);
+        if (detail.saved) ids.add(detail.caseId); else ids.delete(detail.caseId);
+        return { userId, ids, error: false };
       });
     };
     window.addEventListener("favorites-changed", changed);
-    void refresh();
-    const subscription = isSupabaseConfigured() ? getSupabaseBrowserClient().auth.onAuthStateChange(() => { queueMicrotask(() => { void refresh(); }); }).data.subscription : null;
-    return () => { active = false; subscription?.unsubscribe(); window.removeEventListener("favorites-changed", changed); };
-  }, []);
-  return <FavoritesContext.Provider value={state}>{children}</FavoritesContext.Provider>;
+    return () => { active = false; window.removeEventListener("favorites-changed", changed); };
+  }, [userId]);
+
+  const current = loaded?.userId === userId ? loaded : undefined;
+  return <FavoritesContext value={{
+    state: { authorization, ids: current?.ids ?? emptyIds },
+    meta: { ready: auth.ready && (!userId || Boolean(current)), error: auth.error || Boolean(current?.error) },
+  }}>{children}</FavoritesContext>;
 }

@@ -31,3 +31,15 @@ it("未保存の変更を保護し、保存後は確認なしで移動する", a
   expect(confirm).toHaveBeenCalledTimes(1);
   confirm.mockRestore();
 });
+
+it("エラーが残っていても別の入力欄を修正中にフォーカスを奪わない", () => {
+  const router = createMemoryRouter([{ path: "/", element: <ManagedForm method="post"><Field label="企業名"><input name="name" required /></Field><Field label="メールアドレス"><input type="email" name="email" required /></Field><SubmitButton>保存</SubmitButton></ManagedForm> }]);
+  render(<RouterProvider router={router} />);
+  fireEvent.click(screen.getByRole("button", { name: "保存" }));
+  expect(screen.getByRole("textbox", { name: "企業名" })).toHaveFocus();
+  const email = screen.getByRole("textbox", { name: "メールアドレス" });
+  email.focus();
+  fireEvent.change(email, { target: { value: "test@" } });
+  expect(email).toHaveFocus();
+  expect(screen.getByRole("textbox", { name: "企業名" })).toHaveAttribute("aria-invalid", "true");
+});

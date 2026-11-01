@@ -42,3 +42,9 @@ it("円単位の費用を表示し、逆転した範囲は保存前に拒否す�
   expect(Object.keys(priceErrors("200000", "100000"))).toEqual(["priceMin", "priceMax"]);
   expect(priceErrors("", "")).toEqual({});
 });
+
+it("共有した詳細URLや別タブからも検索条件付きの一覧へ戻れる", () => {
+  const props = { loaderData: { item: { id: "case", title: "台所の改修", company: "施工会社", companyId: "company", image: "", area: "飯塚", price: "要相談", period: "", categories: [], summary: "" } } } as unknown as Parameters<typeof CaseDetailRoute>[0];
+  render(<RouterProvider router={createMemoryRouter([{ path: "/cases/case", element: <CaseDetailRoute {...props} /> }], { initialEntries: [`/cases/case?returnTo=${encodeURIComponent("/search?area=飯塚&page=2")}`] })} />);
+  expect(screen.getByRole("link", { name: "検索結果へ戻る" })).toHaveAttribute("href", "/search?area=飯塚&page=2");
+});

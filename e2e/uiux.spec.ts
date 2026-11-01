@@ -63,6 +63,7 @@ test("検索0件の案内と企業宛てフォームの内容が正しい", asyn
   await expect(page.getByRole("heading", { name: "条件に合う企業がありません" })).toBeVisible();
   await page.getByRole("link", { name: "条件をクリア" }).click();
   await expect(page).toHaveURL(/\/companies$/);
+  await expect(page.getByRole("textbox", { name: "企業名や所在地を検索" })).toHaveValue("");
   await page.goto("/contact", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("option", { name: "会員登録・アカウントについて" })).toHaveCount(0);
   await expect(page.getByText("施工や見積もりのご相談を、選択した企業へ直接送信します。")).toBeVisible();

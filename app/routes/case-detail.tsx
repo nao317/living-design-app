@@ -27,7 +27,7 @@ clientLoader.hydrate = true as const;
 
 export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
   const location = useLocation();
-  const requestedReturnTo: unknown = location.state?.searchReturnTo;
+  const requestedReturnTo: unknown = new URLSearchParams(location.search).get("returnTo") ?? location.state?.searchReturnTo;
   const returnTo = typeof requestedReturnTo === "string" && (requestedReturnTo === "/search" || requestedReturnTo.startsWith("/search?")) ? requestedReturnTo : "/search";
   if (!loaderData.item) return <PublicLayout><div className="public-page empty-state"><h1>施工事例が見つかりません</h1></div></PublicLayout>;
   const { item } = loaderData;
@@ -52,8 +52,8 @@ export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
             </dl>
           </section>
           <aside className="case-company">
-            <h2><Building2 size={18} />{item.company}</h2>
-            {item.companyImage ? <StorageImage src={item.companyImage} storagePath={item.companyImagePath} bucket="company-assets" alt={item.company} /> : <div className="image-empty">企業画像未登録</div>}
+            <h2><Building2 aria-hidden="true" size={18} />{item.company}</h2>
+            {item.companyImage ? <StorageImage width={240} height={130} src={item.companyImage} storagePath={item.companyImagePath} bucket="company-assets" alt={item.company} /> : <div className="image-empty">企業画像未登録</div>}
             <Link className="button button--secondary" to={"/companies/" + item.companyId}>企業情報を見る</Link>
             <Link className="button button--primary" to={`/contact?companyId=${item.companyId}&caseId=${item.id}`}>企業に問い合わせる</Link>
           </aside>
