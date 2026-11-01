@@ -1,6 +1,7 @@
 import { Form, Link, useNavigation } from "react-router";
 import { Button } from "../../components/atoms";
 import { Field } from "../../components/molecules";
+import { ManagedForm } from "../forms/managed-form";
 
 export function AuthPanel({
   mode,
@@ -18,24 +19,25 @@ export function AuthPanel({
   const submitting = navigation.state === "submitting";
 
   return (
-    <main className="auth-page">
+    <main id="main-content" tabIndex={-1} className="auth-page">
       <section className="auth-panel">
         <h1>{signup ? "新規登録" : "ログイン"}</h1>
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         {message ? <p className="form-success" role="status">{message}</p> : null}
-        <Form method="post" className="auth-form">
+        <ManagedForm method="post" className="auth-form">
           <input type="hidden" name="intent" value="password" />
           <input type="hidden" name="redirectTo" value={redirectTo} />
           <Field label="メールアドレス">
-            <input type="email" name="email" autoComplete="email" placeholder="mail@example.com" required />
+            <input type="email" name="email" autoComplete="email" spellCheck={false} placeholder="mail@example.com" required />
           </Field>
-          <Field label="パスワード">
+          <Field label="パスワード" hint={signup ? "8文字以上で入力してください。" : undefined}>
             <input type="password" name="password" autoComplete={signup ? "new-password" : "current-password"} required minLength={8} />
           </Field>
           <Button type="submit" disabled={submitting}>
             {submitting ? "処理中…" : signup ? "新規登録" : "ログイン"}
           </Button>
-        </Form>
+        </ManagedForm>
+        {!signup ? <p className="auth-help"><Link to="/forgot-password">パスワードを忘れた方</Link></p> : null}
         <div className="auth-divider"><span>または</span></div>
         <Form method="post">
           <input type="hidden" name="intent" value="google" />

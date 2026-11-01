@@ -11,3 +11,5 @@ export default function NotFoundRoute() {
     </PublicLayout>
   );
 }
+
+export function meta() { return [{ title: "ページが見つかりません | 飯塚のリノベ" }]; }

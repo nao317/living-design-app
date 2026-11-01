@@ -1,8 +1,9 @@
 import type { Route } from "./+types/company-apply";
-import { data, Form } from "react-router";
+import { data } from "react-router";
 import { z } from "zod";
-import { Button } from "../components/atoms";
 import { Field } from "../components/molecules";
+import { ManagedForm, SubmitButton } from "../features/forms/managed-form";
+import { validationErrors } from "../features/forms/validation";
 import { DashboardLayout } from "../components/templates";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
@@ -33,7 +34,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   const result = applicationSchema.safeParse(values);
 
   if (!result.success) {
-    return data({ error: result.error.issues[0]?.message ?? "入力内容を確認してください。" }, { status: 400 });
+    return data({ error: "入力内容を確認してください。", fieldErrors: validationErrors(result.error) }, { status: 400 });
   }
 
   const supabase = getSupabaseBrowserClient();
@@ -63,19 +64,21 @@ export default function CompanyApplyRoute({ actionData }: Route.ComponentProps) 
       {actionData && "submitted" in actionData && actionData.submitted ? <p className="success-message" role="status">企業申請を受け付けました。</p> : null}
       {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
       {!(actionData && "submitted" in actionData && actionData.submitted) ? (
-        <Form method="post" className="edit-form">
+        <ManagedForm protect method="post" className="edit-form">
           <section className="form-card">
             <div className="form-grid">
               <Field label="企業名"><input name="companyName" required maxLength={120} /></Field>
-              <Field label="所在地"><input name="address" maxLength={200} /></Field>
-              <Field label="電話番号"><input name="phone" maxLength={40} /></Field>
+              <Field label="所在地"><input name="address" autoComplete="street-address" maxLength={200} /></Field>
+              <Field label="電話番号"><input name="phone" type="tel" autoComplete="tel" maxLength={40} /></Field>
               <Field label="ホームページ"><input name="websiteUrl" type="url" /></Field>
             </div>
             <Field label="企業紹介"><textarea name="description" rows={5} maxLength={2000} /></Field>
-            <div className="form-actions"><Button type="submit">申請する</Button></div>
+            <div className="form-actions"><SubmitButton>申請する</SubmitButton></div>
           </section>
-        </Form>
+        </ManagedForm>
       ) : null}
     </DashboardLayout>
   );
 }
+
+export function meta() { return [{ title: "企業アカウントの申請 | 飯塚のリノベ" }]; }

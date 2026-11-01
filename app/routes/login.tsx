@@ -21,3 +21,5 @@ export default function LoginRoute({ loaderData, actionData }: Route.ComponentPr
     />
   );
 }
+
+export function meta() { return [{ title: "ログイン | 飯塚のリノベ" }]; }

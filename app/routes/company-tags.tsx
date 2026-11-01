@@ -106,3 +106,5 @@ export default function CompanyTagsRoute({ loaderData, actionData }: Route.Compo
     </section>
   </DashboardLayout>;
 }
+
+export function meta() { return [{ title: "検索項目の変更申請 | 飯塚のリノベ" }]; }

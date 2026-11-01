@@ -1,8 +1,9 @@
 import type { Route } from "./+types/company-case-new";
-import { data, Form, Link } from "react-router";
+import { data, Link } from "react-router";
 import { z } from "zod";
-import { Button } from "../components/atoms";
 import { Field } from "../components/molecules";
+import { ManagedForm, SubmitButton } from "../features/forms/managed-form";
+import { validationErrors, priceErrors } from "../features/forms/validation";
 import { DashboardLayout } from "../components/templates";
 import { requireAuthorization, getAuthorizationContext } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
@@ -21,7 +22,7 @@ const caseSchema = z.object({
 function parsePrice(value: string) {
   if (!value) return null;
   const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= 2_147_483_647 ? parsed : undefined;
 }
 
 export function loader() {
@@ -52,9 +53,9 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   await requireAuthorization(request, { role: "COMPANY" });
   const formData = await request.formData();
   const result = caseSchema.safeParse(Object.fromEntries(formData));
-  if (!result.success || parsePrice(result.data.priceMin) === undefined || parsePrice(result.data.priceMax) === undefined) {
-    return data({ error: "入力内容を確認してください。" }, { status: 400 });
-  }
+  if (!result.success) return data({ error: "入力内容を確認してください。", fieldErrors: validationErrors(result.error) }, { status: 400 });
+  const fieldErrors = priceErrors(result.data.priceMin, result.data.priceMax);
+  if (Object.keys(fieldErrors).length) return data({ error: "費用の下限と上限を確認してください。", fieldErrors }, { status: 400 });
   const files = formData.getAll("images").filter(isImageFile);
   const imageCountError = validateCaseImageCount(0, files.length);
   if (imageCountError) return data({ error: imageCountError }, { status: 400 });
@@ -137,23 +138,25 @@ export default function CompanyCaseNewRoute({ loaderData, actionData }: Route.Co
       {actionData && "saved" in actionData && actionData.saved ? <p className="success-message" role="status">施工事例を登録しました。</p> : null}
       {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
       {actionData && "caseId" in actionData && actionData.caseId ? <p><Link to={`/company/cases/${actionData.caseId}/edit`}>登録した施工事例を編集する</Link></p> : null}
-      <Form method="post" encType="multipart/form-data" className="edit-form">
+      {!(actionData && "saved" in actionData && actionData.saved) && !(actionData && "caseId" in actionData && actionData.caseId) ? <ManagedForm protect method="post" encType="multipart/form-data" className="edit-form">
         <section className="form-card">
           <div className="form-grid">
             <Field label="タイトル"><input name="title" required maxLength={160} /></Field>
             <Field label="施工地域"><input name="area" maxLength={120} /></Field>
             <Field label="施工期間"><input name="period" maxLength={120} /></Field>
-            <Field label="費用下限"><input name="priceMin" type="number" min="0" inputMode="numeric" /></Field>
-            <Field label="費用上限"><input name="priceMax" type="number" min="0" inputMode="numeric" /></Field>
+            <Field label="費用下限（円）"><input name="priceMin" type="number" min="0" max="2147483647" inputMode="numeric" /></Field>
+            <Field label="費用上限（円）"><input name="priceMax" type="number" min="0" max="2147483647" inputMode="numeric" /></Field>
           </div>
           <Field label="概要"><textarea name="summary" rows={5} maxLength={2000} /></Field>
           <fieldset className="choice-list"><legend>リノベーション箇所</legend>{loaderData.categories.map((category) => <label key={category.id}><input type="checkbox" name="categoryIds" value={category.id} />{category.name}</label>)}</fieldset>
           <fieldset className="choice-list"><legend>こだわり条件</legend>{loaderData.styles.map((style) => <label key={style.id}><input type="checkbox" name="styleIds" value={style.id} />{style.name}</label>)}</fieldset>
           <label className="choice-list"><input type="checkbox" name="publish" />登録後に公開する</label>
-          <Field label="施工写真" hint={`保存する画像は1枚1MB以内、1事例につき${MAX_CASE_IMAGES}枚まで。`}><input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple /></Field>
-          <div className="form-actions"><Button type="submit">登録する</Button></div>
+          <Field label="施工写真" hint={`写真は施工前後を区別せず、選択した順に表示します。保存する画像は1枚1MB以内、1事例につき${MAX_CASE_IMAGES}枚まで。`}><input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple /></Field>
+          <div className="form-actions"><SubmitButton>登録する</SubmitButton></div>
         </section>
-      </Form>
+      </ManagedForm> : null}
     </DashboardLayout>
   );
 }
+
+export function meta() { return [{ title: "施工事例の追加 | 飯塚のリノベ" }]; }

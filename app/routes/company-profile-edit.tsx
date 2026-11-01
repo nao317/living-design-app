@@ -1,9 +1,11 @@
 import type { Route } from "./+types/company-profile-edit";
 import { Camera, Plus, Trash2 } from "lucide-react";
-import { data, Form } from "react-router";
+import { data } from "react-router";
 import { z } from "zod";
-import { Button, Tag } from "../components/atoms";
+import { Tag } from "../components/atoms";
 import { Field } from "../components/molecules";
+import { ManagedForm, SubmitButton } from "../features/forms/managed-form";
+import { validationErrors } from "../features/forms/validation";
 import { DashboardLayout } from "../components/templates";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
@@ -32,7 +34,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   await requireAuthorization(request, { role: "COMPANY", companyRoles: ["OWNER", "ADMIN"] });
   const formData = await request.formData();
   const result = profileSchema.safeParse(Object.fromEntries(formData));
-  if (!result.success) return data({ error: "入力内容を確認してください。" }, { status: 400 });
+  if (!result.success) return data({ error: "入力内容を確認してください。", fieldErrors: validationErrors(result.error) }, { status: 400 });
 
   if (isSupabaseConfigured()) {
     const context = await getAuthorizationContext();
@@ -160,7 +162,7 @@ export default function CompanyProfileEditRoute({ loaderData, actionData }: Rout
       <header className="page-heading"><h1>企業情報の編集</h1></header>
       {actionData && "saved" in actionData && actionData.saved ? <p className="success-message" role="status">企業情報を保存しました。</p> : null}
       {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
-      <Form method="post" encType="multipart/form-data" className="edit-form">
+      <ManagedForm protect method="post" encType="multipart/form-data" className="edit-form">
         <section className="company-media-fields">
           <label className="media-placeholder media-upload">
             {loaderData.company.coverImage ? <StorageImage src={loaderData.company.coverImage} storagePath={loaderData.company.coverImagePath} bucket="company-assets" alt="企業のメイン画像" /> : <><Plus /><span>メイン画像を追加</span></>}
@@ -178,19 +180,21 @@ export default function CompanyProfileEditRoute({ loaderData, actionData }: Rout
         <section className="form-card">
           <h2>企業情報</h2>
           <div className="form-grid">
-            <Field label="企業名"><input name="name" defaultValue={loaderData.company.name} /></Field>
-            <Field label="問い合わせ先メールアドレス"><input name="email" type="email" defaultValue={loaderData.company.email} /></Field>
+            <Field label="企業名"><input name="name" autoComplete="organization" required maxLength={120} defaultValue={loaderData.company.name} /></Field>
+            <Field label="問い合わせ先メールアドレス"><input name="email" type="email" autoComplete="email" spellCheck={false} defaultValue={loaderData.company.email} /></Field>
             <Field label="設立年"><input name="founded" defaultValue={loaderData.company.founded} /></Field>
-            <Field label="電話番号"><input name="phone" defaultValue={loaderData.company.phone} /></Field>
-            <Field label="ホームページ"><input name="website" defaultValue={loaderData.company.website} /></Field>
-            <Field label="所在地"><input name="address" defaultValue={loaderData.company.address} /></Field>
+            <Field label="電話番号"><input name="phone" type="tel" autoComplete="tel" defaultValue={loaderData.company.phone} /></Field>
+            <Field label="ホームページ"><input name="website" type="url" autoComplete="url" defaultValue={loaderData.company.website} /></Field>
+            <Field label="所在地"><input name="address" autoComplete="street-address" defaultValue={loaderData.company.address} /></Field>
             <Field label="営業時間"><input name="businessHours" defaultValue={loaderData.company.businessHours} /></Field>
           </div>
           <Field label="企業紹介"><textarea name="description" rows={3} defaultValue={loaderData.company.description} /></Field>
           <div className="feature-editor"><span>アピールポイント</span>{loaderData.company.features.map((feature) => <Tag key={feature}>{feature}</Tag>)}<button type="button"><Plus size={14} />追加</button></div>
-          <div className="form-actions"><Button type="submit">更新する</Button></div>
+          <div className="form-actions"><SubmitButton>更新する</SubmitButton></div>
         </section>
-      </Form>
+      </ManagedForm>
     </DashboardLayout>
   );
 }
+
+export function meta() { return [{ title: "企業情報の編集 | 飯塚のリノベ" }]; }

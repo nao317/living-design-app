@@ -21,3 +21,5 @@ export default function SignupRoute({ loaderData, actionData }: Route.ComponentP
     />
   );
 }
+
+export function meta() { return [{ title: "新規登録 | 飯塚のリノベ" }]; }

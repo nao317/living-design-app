@@ -159,10 +159,12 @@ export default function AdminDashboardRoute({ loaderData, actionData }: Route.Co
         <div className="section-header"><h2>施工事例管理</h2><Link to="/search">公開一覧を見る</Link></div>
         <div className="member-list">
           {loaderData.posts.map((post) => (
-            <div key={post.id}><strong>{post.title}</strong><span>{post.status}</span><Link to={`/admin/cases/${post.id}/edit`}>編集</Link><Form method="post"><input type="hidden" name="intent" value="delete-case" /><input type="hidden" name="caseId" value={post.id} /><Button type="submit" variant="secondary">削除</Button></Form></div>
+            <div key={post.id}><strong>{post.title}</strong><span>{post.status}</span><Link to={`/admin/cases/${post.id}/edit`}>編集</Link><Form method="post" onSubmit={(event) => { if (!window.confirm(`「${post.title}」を削除しますか？この操作は取り消せません。`)) event.preventDefault(); }}><input type="hidden" name="intent" value="delete-case" /><input type="hidden" name="caseId" value={post.id} /><Button type="submit" variant="danger">削除</Button></Form></div>
           ))}
         </div>
       </section>
     </DashboardLayout>
   );
 }
+
+export function meta() { return [{ title: "管理者ダッシュボード | 飯塚のリノベ" }]; }

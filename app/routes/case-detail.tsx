@@ -1,12 +1,17 @@
 import type { Route } from "./+types/case-detail";
 import { ArrowLeft, Building2 } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { Tag } from "../components/atoms";
 import { FavoriteButton } from "../components/molecules";
 import { PublicLayout } from "../components/templates";
 import { fetchCaseById } from "../features/cases/public-data.client";
 import type { CaseStudy } from "../features/cases/types";
 import { StorageImage } from "../features/media/storage-image";
+import { CaseGallery } from "../features/media/case-gallery";
+
+export function meta({ loaderData }: Route.MetaArgs) {
+  return [{ title: `${loaderData?.item?.title ?? "施工事例"} | 飯塚のリノベ` }];
+}
 
 export function loader() {
   return { item: null as CaseStudy | null };
@@ -21,36 +26,31 @@ export async function clientLoader({ params, serverLoader }: Route.ClientLoaderA
 clientLoader.hydrate = true as const;
 
 export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
+  const location = useLocation();
+  const requestedReturnTo: unknown = location.state?.searchReturnTo;
+  const returnTo = typeof requestedReturnTo === "string" && (requestedReturnTo === "/search" || requestedReturnTo.startsWith("/search?")) ? requestedReturnTo : "/search";
   if (!loaderData.item) return <PublicLayout><div className="public-page empty-state"><h1>施工事例が見つかりません</h1></div></PublicLayout>;
   const { item } = loaderData;
   const gallery = item.images ?? [];
-  const beforeImage = gallery[1];
-  const afterImage = gallery[0];
   return (
     <PublicLayout>
       <article className="public-page case-detail-page">
-        <Link to="/search" className="back-link"><ArrowLeft size={16} />検索結果へ戻る</Link>
+        <Link to={returnTo} className="back-link"><ArrowLeft size={16} aria-hidden="true" />検索結果へ戻る</Link>
         {item.status && item.status !== "PUBLISHED" ? <p className="case-visibility-notice" role="status">この事例は{item.status === "DRAFT" ? "下書き" : "非公開"}です。検索結果には表示されません。<Link to={`/company/cases/${item.id}/edit`}>編集画面で公開する</Link></p> : null}
-        <div className="before-after">
-          <figure><figcaption>BEFORE</figcaption>{beforeImage ? <StorageImage src={beforeImage} storagePath={item.imagesPaths?.[1]} bucket="case-images" alt="施工前" loading="eager" fetchPriority="high" /> : <div className="image-empty">画像未登録</div>}</figure>
-          <figure><figcaption>AFTER</figcaption>{afterImage ? <StorageImage src={afterImage} storagePath={item.imagesPaths?.[0]} bucket="case-images" alt="施工後" loading="eager" fetchPriority="high" /> : <div className="image-empty">画像未登録</div>}</figure>
-        </div>
+        <CaseGallery images={gallery} paths={item.imagesPaths} title={item.title} />
         <div className="case-detail-layout">
-          <aside className="detail-thumbnails">
-            {gallery.slice(2).map((image, index) => <StorageImage key={image} src={image} storagePath={item.imagesPaths?.[index + 2]} bucket="case-images" alt={`施工写真${index + 3}`} />)}
-          </aside>
-          <main className="case-detail-main">
+          <section className="case-detail-main">
             <div className="case-detail-title">
               <div>{item.categories.map((category) => <Tag key={category}>{category}</Tag>)}<h1>{item.title}</h1></div>
-              <FavoriteButton />
+              <FavoriteButton caseId={item.id} />
             </div>
             <p>{item.summary}</p>
             <dl className="case-specs">
               <div><dt>費用目安</dt><dd>{item.price}</dd></div>
-              <div><dt>施工期間</dt><dd>{item.period}</dd></div>
+              <div><dt>施工期間</dt><dd>{item.period || "要相談"}</dd></div>
               <div><dt>施工エリア</dt><dd>{item.area}</dd></div>
             </dl>
-          </main>
+          </section>
           <aside className="case-company">
             <h2><Building2 size={18} />{item.company}</h2>
             {item.companyImage ? <StorageImage src={item.companyImage} storagePath={item.companyImagePath} bucket="company-assets" alt={item.company} /> : <div className="image-empty">企業画像未登録</div>}

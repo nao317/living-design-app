@@ -20,8 +20,8 @@ describe("Filters", () => {
     expect(screen.getByRole("combobox", { name: "リノベーション箇所" })).toHaveValue("interior");
     expect(screen.getByRole("combobox", { name: "こだわり条件" })).toHaveValue("natural");
     expect(screen.getByRole("combobox", { name: "並び順" })).toHaveValue("price_asc");
-    expect(screen.getByRole("spinbutton", { name: "予算下限" })).toHaveValue(100);
-    expect(screen.getByRole("spinbutton", { name: "予算上限" })).toHaveValue(300);
+    expect(screen.getByRole("spinbutton", { name: "予算下限（円）" })).toHaveValue(100);
+    expect(screen.getByRole("spinbutton", { name: "予算上限（円）" })).toHaveValue(300);
     expect(screen.getByRole("option", { name: "内装" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "自然素材" })).toBeInTheDocument();
   });

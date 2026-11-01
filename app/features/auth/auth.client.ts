@@ -3,15 +3,21 @@ import { z } from "zod";
 import { getSupabaseBrowserClient } from "../../lib/supabase.client";
 import { resolvePostLoginRedirect } from "./authorization.client";
 import { rememberAuthRedirectTo, safeRedirectTo } from "./redirect";
+import { validationErrors } from "../forms/validation";
 
 const credentialsSchema = z.object({
   email: z.email(),
   password: z.string().min(8),
 });
 
-function getAuthErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message.includes("接続情報")) return error.message;
-  return "認証に失敗しました。入力内容またはSupabaseの設定を確認してください。";
+export function getAuthErrorMessage(error: unknown) {
+  const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+  if (code === "invalid_credentials") return "メールアドレスまたはパスワードが正しくありません。パスワードを忘れた場合は再設定してください。";
+  if (code === "email_not_confirmed") return "メールアドレスの確認が完了していません。登録時の確認メールにあるリンクを開いてください。";
+  if (code === "over_email_send_rate_limit" || code === "over_request_rate_limit") return "試行回数が多いため、しばらく待ってから再度お試しください。";
+  if (code === "weak_password") return "より長く、推測されにくいパスワードを入力してください。";
+  if (code === "user_already_exists") return "登録内容を確認してください。登録済みの場合はログインまたはパスワードの再設定をご利用ください。";
+  return "認証を完了できませんでした。接続を確認し、時間をおいて再度お試しください。";
 }
 
 export async function handleAuthAction(request: Request, mode: "login" | "signup") {
@@ -37,6 +43,7 @@ export async function handleAuthAction(request: Request, mode: "login" | "signup
     const result = credentialsSchema.safeParse(Object.fromEntries(formData));
     if (!result.success) {
       return {
+        fieldErrors: validationErrors(result.error),
         error: mode === "signup"
           ? "メールアドレスと8文字以上のパスワードを入力してください。"
           : "メールアドレスとパスワードを確認してください。",

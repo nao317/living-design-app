@@ -11,6 +11,11 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import styles from "./root.module.css";
 import { Header } from "./components/organisms";
+import { FavoritesProvider } from "./features/favorites/favorites-context";
+
+export function meta() {
+  return [{ title: "飯塚のリノベ" }];
+}
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -31,6 +36,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#ffffff" />
         <Meta />
         <Links />
       </head>
@@ -45,10 +51,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <div className={styles.appShell}>
+    <FavoritesProvider><div className={styles.appShell}>
+      <a href="#main-content" className="skip-link">本文へ移動</a>
       <Header />
-      <Outlet />
-    </div>
+      <div id="page-content"><Outlet /></div>
+    </div></FavoritesProvider>
   );
 }
 
@@ -66,7 +73,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   }
 
   return (
-    <main className={styles.errorBoundary}>
+    <main id="main-content" tabIndex={-1} className={styles.errorBoundary}>
       <h1>{message}</h1>
       <p>{details}</p>
       {stack && <pre className={styles.errorTrace}><code>{stack}</code></pre>}
