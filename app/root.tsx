@@ -12,6 +12,7 @@ import "./app.css";
 import styles from "./root.module.css";
 import { Header } from "./components/organisms";
 import { FavoritesProvider } from "./features/favorites/favorites-context";
+import { AuthProvider } from "./features/auth/auth-context";
 
 export function meta() {
   return [{ title: "飯塚のリノベ" }];
@@ -19,6 +20,7 @@ export function meta() {
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
+  { rel: "preconnect", href: "https://images.unsplash.com" },
   {
     rel: "preconnect",
     href: "https://fonts.gstatic.com",
@@ -51,11 +53,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <FavoritesProvider><div className={styles.appShell}>
+    <AuthProvider><FavoritesProvider><div className={styles.appShell}>
       <a href="#main-content" className="skip-link">本文へ移動</a>
       <Header />
       <div id="page-content"><Outlet /></div>
-    </div></FavoritesProvider>
+    </div></FavoritesProvider></AuthProvider>
   );
 }
 

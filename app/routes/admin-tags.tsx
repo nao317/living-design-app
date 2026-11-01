@@ -62,7 +62,7 @@ export default function AdminTagsRoute({ loaderData, actionData }: Route.Compone
         {item.target_id ? <span>現在の項目：{itemNames.get(item.target_id) ?? "対象項目が見つかりません"}</span> : null}
         <span>申請理由：{item.reason}</span><small>{new Date(item.created_at).toLocaleString("ja-JP")}</small>
         <Form method="post" className="inline-form"><input type="hidden" name="requestId" value={item.id} />
-          <input name="reviewReason" maxLength={1000} placeholder="審査理由（却下時は必須）" aria-label={`${describe(item)}の審査理由`} />
+          <input name="reviewReason" maxLength={1000} autoComplete="off" placeholder="例：同じ項目が登録済みのため…" aria-label={`${describe(item)}の審査理由`} />
           <Button type="submit" name="decision" value="APPROVED">承認</Button>
           <Button type="submit" name="decision" value="REJECTED" variant="secondary">却下</Button>
         </Form>

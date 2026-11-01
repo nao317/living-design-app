@@ -231,12 +231,12 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
         <section className="case-photo-editor">
           {loaderData.caseImages.map((image) => (
             <div className="case-photo-item" key={image.id}>
-              <StorageImage src={image.url} storagePath={image.storagePath} bucket="case-images" alt="施工事例" />
+              <StorageImage width={300} height={150} src={image.url} storagePath={image.storagePath} bucket="case-images" alt="施工事例" />
               <label><input type="checkbox" name="removeImageIds" value={image.id} />削除</label>
             </div>
           ))}
           <label className="case-photo-add">
-            <ImagePlus /><span>写真を追加</span><span>1枚1MB以内・合計{MAX_CASE_IMAGES}枚まで</span>
+            <ImagePlus aria-hidden="true" /><span>写真を追加</span><span>1枚1MB以内・合計{MAX_CASE_IMAGES}枚まで</span>
             <input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple />
           </label>
         </section>

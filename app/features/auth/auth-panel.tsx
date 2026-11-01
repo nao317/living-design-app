@@ -1,7 +1,7 @@
 import { Form, Link, useNavigation } from "react-router";
 import { Button } from "../../components/atoms";
 import { Field } from "../../components/molecules";
-import { ManagedForm } from "../forms/managed-form";
+import { ManagedForm, SubmitButton } from "../forms/managed-form";
 
 export function AuthPanel({
   mode,
@@ -16,7 +16,7 @@ export function AuthPanel({
 }) {
   const signup = mode === "signup";
   const navigation = useNavigation();
-  const submitting = navigation.state === "submitting";
+  const submitting = navigation.state !== "idle" && Boolean(navigation.formMethod);
 
   return (
     <main id="main-content" tabIndex={-1} className="auth-page">
@@ -28,14 +28,12 @@ export function AuthPanel({
           <input type="hidden" name="intent" value="password" />
           <input type="hidden" name="redirectTo" value={redirectTo} />
           <Field label="メールアドレス">
-            <input type="email" name="email" autoComplete="email" spellCheck={false} placeholder="mail@example.com" required />
+            <input type="email" name="email" autoComplete="email" spellCheck={false} placeholder="mail@example.com…" required />
           </Field>
           <Field label="パスワード" hint={signup ? "8文字以上で入力してください。" : undefined}>
             <input type="password" name="password" autoComplete={signup ? "new-password" : "current-password"} required minLength={8} />
           </Field>
-          <Button type="submit" disabled={submitting}>
-            {submitting ? "処理中…" : signup ? "新規登録" : "ログイン"}
-          </Button>
+          <SubmitButton pendingLabel="認証中…">{signup ? "新規登録" : "ログイン"}</SubmitButton>
         </ManagedForm>
         {!signup ? <p className="auth-help"><Link to="/forgot-password">パスワードを忘れた方</Link></p> : null}
         <div className="auth-divider"><span>または</span></div>
@@ -43,8 +41,9 @@ export function AuthPanel({
           <input type="hidden" name="intent" value="google" />
           <input type="hidden" name="redirectTo" value={redirectTo} />
           <Button type="submit" variant="secondary" className="auth-google" disabled={submitting}>
-            <img src="/google-g-logo.png" alt="" aria-hidden="true" />
-            <span>Googleで続ける</span>
+            <img src="/google-g-logo.png" alt="" width={18} height={18} aria-hidden="true" />
+            {submitting && navigation.formData?.get("intent") === "google" ? <span className="spinner" aria-hidden="true" /> : null}
+            <span aria-live="polite">{submitting && navigation.formData?.get("intent") === "google" ? "認証中…" : "Googleで続ける"}</span>
           </Button>
         </Form>
         <p className="auth-switch">

@@ -87,11 +87,11 @@ export default function CompanyTagsRoute({ loaderData, actionData }: Route.Compo
           <strong>{option.name}</strong>
           <Form method="post" className="inline-form"><input type="hidden" name="intent" value="request" /><input type="hidden" name="kind" value={kind} /><input type="hidden" name="operation" value="EDIT" /><input type="hidden" name="targetId" value={option.id} />
             <input name="name" defaultValue={option.name} required maxLength={100} aria-label={`${option.name}の新しい名称`} />
-            <input name="reason" required maxLength={1000} placeholder="変更理由" aria-label={`${option.name}の変更理由`} />
+            <input name="reason" required maxLength={1000} autoComplete="off" placeholder="例：利用者に伝わりやすい名称に変更…" aria-label={`${option.name}の変更理由`} />
             <Button type="submit" variant="secondary">名称変更を申請</Button>
           </Form>
           <Form method="post" className="inline-form"><input type="hidden" name="intent" value="request" /><input type="hidden" name="kind" value={kind} /><input type="hidden" name="operation" value="DELETE" /><input type="hidden" name="targetId" value={option.id} />
-            <input name="reason" required maxLength={1000} placeholder="削除理由" aria-label={`${option.name}の削除理由`} />
+            <input name="reason" required maxLength={1000} autoComplete="off" placeholder="例：同じ意味の項目があるため…" aria-label={`${option.name}の削除理由`} />
             <Button type="submit" variant="secondary">削除を申請</Button>
           </Form>
         </div>)}</div>}

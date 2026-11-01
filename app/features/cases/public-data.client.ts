@@ -99,14 +99,11 @@ async function fetchCasesByRows(rows: CaseRow[], includeGallery = false) {
   if (!rows.length) return [];
   const supabase = getSupabaseBrowserClient();
   const companyIds = [...new Set(rows.map((row) => row.company_id))];
-  const { data, error } = await supabase.from("companies")
-    .select("id, name, address, logo_path, cover_image_path")
-    .in("id", companyIds)
-    .neq("status", "SUSPENDED");
-  if (error) throw error;
-
-  const companies = new Map((data ?? []).map((company) => [company.id, company]));
-  const [imageResult, categoryResult, styleResult] = await Promise.all([
+  const [companyResult, imageResult, categoryResult, styleResult] = await Promise.all([
+    supabase.from("companies")
+      .select("id, name, address, logo_path, cover_image_path")
+      .in("id", companyIds)
+      .neq("status", "SUSPENDED"),
     supabase.from("case_images")
       .select("case_id, storage_path, display_order")
       .in("case_id", rows.map((row) => row.id))
@@ -118,6 +115,8 @@ async function fetchCasesByRows(rows: CaseRow[], includeGallery = false) {
       .select("case_id, styles(slug, name)")
       .in("case_id", rows.map((row) => row.id)),
   ]);
+  if (companyResult.error) throw companyResult.error;
+  const companies = new Map((companyResult.data ?? []).map((company) => [company.id, company]));
   if (imageResult.error) throw imageResult.error;
   if (categoryResult.error) throw categoryResult.error;
   if (styleResult.error) throw styleResult.error;
@@ -327,7 +326,10 @@ export async function fetchCompanyById(companyId: string) {
   if (casesError) throw casesError;
 
   const companyImagePath = company.cover_image_path ?? company.logo_path;
-  const companyImage = await getSignedImageUrl("company-assets", companyImagePath, "detail");
+  const [companyImage, cases] = await Promise.all([
+    getSignedImageUrl("company-assets", companyImagePath, "detail"),
+    fetchCasesByRows((caseRows ?? []) as CaseRow[]),
+  ]);
   return {
     company: {
       ...company,
@@ -339,7 +341,7 @@ export async function fetchCompanyById(companyId: string) {
       imagePath: companyImagePath ?? undefined,
       features: [],
     },
-    cases: await fetchCasesByRows((caseRows ?? []) as CaseRow[]),
+    cases,
   };
 }
 
