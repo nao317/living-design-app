@@ -1,6 +1,7 @@
 import type { Route } from "./+types/search";
 import { Pagination } from "../components/molecules";
-import { useNavigation } from "react-router";
+import { Link, useNavigation } from "react-router";
+import { formatPriceRange } from "../features/cases/format";
 import { CaseList, Filters } from "../components/organisms";
 import { PublicLayout } from "../components/templates";
 import { hasInvalidPriceRange, parseSearchParams } from "../features/search/schema";
@@ -55,17 +56,24 @@ export function HydrateFallback() {
 
 export default function SearchRoute({ loaderData }: Route.ComponentProps) {
   const navigation = useNavigation();
+  const { filters } = loaderData;
+  const conditions = [filters.q && `キーワード：${filters.q}`, filters.area && `地域：${filters.area}`,
+    filters.category && `箇所：${loaderData.categories.find((item) => item.slug === filters.category)?.name ?? filters.category}`,
+    filters.style && `条件：${loaderData.styles.find((item) => item.slug === filters.style)?.name ?? filters.style}`,
+    (filters.priceMin !== undefined || filters.priceMax !== undefined) && `予算：${formatPriceRange(filters.priceMin ?? null, filters.priceMax ?? null)}`,
+    filters.period && `${filters.period}か月以内`].filter(Boolean);
   return (
     <PublicLayout>
       <div className="public-page search-page">
         <div className="search-layout">
           <Filters filters={loaderData.filters} categories={loaderData.categories} styles={loaderData.styles} />
-          <section className="search-results" aria-labelledby="result-heading">
+          <section className="search-results" aria-labelledby="result-heading" aria-busy={navigation.state !== "idle"}>
             <div className="search-results__header">
               <h1 id="result-heading">検索結果</h1>
-              {loaderData.invalidPriceRange || loaderData.loadError ? null : <p>{loaderData.total}件の施工事例が見つかりました</p>}
+              {loaderData.invalidPriceRange || loaderData.loadError ? null : <p role="status">{loaderData.total}件の施工事例が見つかりました</p>}
               {navigation.state !== "idle" ? <p role="status">検索中…</p> : null}
             </div>
+            {conditions.length ? <div className="active-filters" aria-label="適用中の検索条件">{conditions.map((condition) => <span className="tag" key={String(condition)}>{condition}</span>)}<Link to="/search">条件をクリア</Link></div> : null}
             {loaderData.loadError ? (
               <p className="form-error" role="alert">検索結果を取得できませんでした。時間をおいて再度お試しください。</p>
             ) : loaderData.invalidPriceRange ? (
@@ -78,7 +86,7 @@ export default function SearchRoute({ loaderData }: Route.ComponentProps) {
             ) : (
               <div className="empty-state">
                 {loaderData.filters.q || loaderData.filters.area || loaderData.filters.category || loaderData.filters.style || loaderData.filters.priceMin !== undefined || loaderData.filters.priceMax !== undefined || loaderData.filters.period ? (
-                  <><h2>該当する施工事例がありません</h2><p>条件を変更して検索してください。</p></>
+                  <><h2>該当する施工事例がありません</h2><p>条件を変更するか、<Link to="/search">条件をクリア</Link>して検索してください。</p></>
                 ) : (
                   <><h2>公開中の施工事例がありません</h2><p>施工事例が公開されるまでお待ちください。</p></>
                 )}

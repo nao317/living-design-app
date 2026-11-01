@@ -8,6 +8,8 @@ import { StorageImage } from "../features/media/storage-image";
 
 const pageSize = 12;
 
+export function meta() { return [{ title: "企業を探す | 飯塚のリノベ" }]; }
+
 export function loader({ request }: Route.LoaderArgs) {
   return { items: [] as CompanySummary[], total: 0, page: 1, query: new URL(request.url).searchParams.get("q")?.trim() ?? "" };
 }
@@ -58,7 +60,7 @@ export default function CompaniesRoute({ loaderData }: Route.ComponentProps) {
             <Pagination totalItems={loaderData.total} currentPage={loaderData.page} pageSize={pageSize} />
           </>
         ) : (
-          <div className="empty-state"><h2>登録されている企業がありません</h2><p>公開企業が登録されると、ここに表示されます。</p></div>
+          <div className="empty-state">{loaderData.query ? <><h2>条件に合う企業がありません</h2><p>別のキーワードで検索するか、<Link to="/companies">条件をクリア</Link>してください。</p></> : <><h2>登録されている企業がありません</h2><p>公開企業が登録されると、ここに表示されます。</p></>}</div>
         )}
       </div>
     </PublicLayout>

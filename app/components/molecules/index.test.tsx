@@ -1,7 +1,11 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
-import { CaseCard, FavoriteButton } from "./index";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { createMemoryRouter, RouterProvider } from "react-router";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CaseCard, FavoriteButton, Pagination } from "./index";
+
+const state = vi.hoisted(() => ({ authorization: null as null | { userId: string; accountRole: string }, ids: new Set<string>() }));
+vi.mock("../../features/favorites/favorites-context", () => ({ useFavorites: () => ({ ...state, ready: true, error: false }) }));
+beforeEach(() => { state.authorization = null; state.ids = new Set(); });
 
 const caseItem = {
   id: "case-id",
@@ -17,19 +21,37 @@ const caseItem = {
 };
 
 describe("FavoriteButton", () => {
-  it("お気に入り状態を切り替えられる", () => {
-    render(<FavoriteButton />);
+  it("未ログイン時は元の画面を保持してログインへ案内する", async () => {
+    const router = createMemoryRouter([{ path: "/", element: <FavoriteButton caseId="case-id" /> }, { path: "/login", element: <h1>ログイン</h1> }], { initialEntries: ["/?area=飯塚"] });
+    render(<RouterProvider router={router} />);
     const button = screen.getByRole("button", { name: "お気に入りに追加" });
     fireEvent.click(button);
+    await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
+    expect(new URLSearchParams(router.state.location.search).get("redirectTo")).toBe("/?area=飯塚");
+  });
+  it("保存済み状態を表示し、保存失敗を成功として表示しない", async () => {
+    state.authorization = { userId: "user", accountRole: "GENERAL" };
+    state.ids.add("case-id");
+    const router = createMemoryRouter([{ path: "/", element: <FavoriteButton caseId="case-id" /> }, { path: "/favorites/update", action: () => ({ error: "通信できませんでした。" }) }]);
+    render(<RouterProvider router={router} />);
+    fireEvent.click(screen.getByRole("button", { name: "お気に入りから削除" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("通信できませんでした。");
     expect(screen.getByRole("button", { name: "お気に入りから削除" })).toHaveAttribute("aria-pressed", "true");
   });
 });
 
 describe("CaseCard", () => {
   it("施工事例の主要情報と詳細導線を表示する", () => {
-    render(<MemoryRouter><CaseCard item={caseItem} /></MemoryRouter>);
+    render(<RouterProvider router={createMemoryRouter([{ path: "/", element: <CaseCard item={caseItem} /> }])} />);
     expect(screen.getByRole("heading", { name: caseItem.title })).toBeInTheDocument();
     expect(screen.getByText(caseItem.company)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: caseItem.title })).toHaveAttribute("href", `/cases/${caseItem.id}`);
   });
+});
+
+it("大量のページ番号を省略し、検索条件を保持する", () => {
+  render(<RouterProvider router={createMemoryRouter([{ path: "/", element: <Pagination totalItems={10_000_000} currentPage={500_000} /> }], { initialEntries: ["/?q=収納"] })} />);
+  expect(screen.getAllByRole("link").length).toBeLessThanOrEqual(6);
+  expect(screen.getByRole("link", { name: "次のページ" }).getAttribute("href")).toContain("page=500001");
+  expect(new URLSearchParams(screen.getByRole("link", { name: "次のページ" }).getAttribute("href")!.slice(1)).get("q")).toBe("収納");
 });

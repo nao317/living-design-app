@@ -54,6 +54,8 @@ Supabase Dashboardの「Authentication > Providers > Email」でEmail Provider�
 
 メール確認を有効にする場合、確認メールから /auth/callback に戻ったあとマイページへ遷移します。開発時に確認メールを省略する場合は「Confirm email」を無効にできます。
 
+パスワードを忘れた場合は `/forgot-password` から再設定メールを送り、メール内のリンクから `/reset-password` で新しいパスワードを設定します。Authentication > URL ConfigurationのRedirect URLsに、本番・開発それぞれの `/reset-password` URLも登録してください（例：`http://localhost:5173/reset-password`）。再設定メールの送信とパスワード更新は、[Supabase Authのパスワード再設定API](https://supabase.com/docs/reference/javascript/auth-resetpasswordforemail)を使用します。
+
 ## 4. Google OAuthを設定する
 
 1. Google Auth PlatformでWeb applicationのOAuth Clientを作成します。
@@ -100,3 +102,5 @@ npm run dev
 - `/admin/tags`: 申請を承認・却下する。承認前は検索画面に反映されず、承認後は選択肢に反映される。却下理由は申請企業に表示される。
 
 施工地域は自由入力、予算は数値入力、施工期間は事例では自由入力・検索では固定の期間選択、並び順は検索操作です。これらの入力方式や絞り込みロジックの変更は、共通タグの変更申請とは別の設計が必要です。
+
+費用は登録・編集・検索とも円単位の整数です。既存の保存値は変換しません。施工写真には施工前・施工後の役割が保存されていないため、公開画面では登録順の「施工写真」として表示します。

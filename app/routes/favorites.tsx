@@ -6,6 +6,7 @@ import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { fetchFavoriteCases } from "../features/cases/public-data.client";
 import type { CaseStudy } from "../features/cases/types";
+import { Link } from "react-router";
 
 const pageSize = 10;
 
@@ -37,8 +38,10 @@ export default function FavoritesRoute({ loaderData }: { loaderData: ReturnType<
   return (
     <DashboardLayout>
       <header className="page-heading"><h1>お気に入り</h1></header>
-      <CaseList items={loaderData.items} />
+      {loaderData.items.length ? <CaseList items={loaderData.items} /> : <div className="empty-state"><h2>お気に入りはまだありません</h2><p>気になる施工事例を保存して、あとから比較できます。</p><Link to="/search" className="button button--primary">施工事例を探す</Link></div>}
       <Pagination totalItems={loaderData.total} currentPage={loaderData.page} pageSize={pageSize} />
     </DashboardLayout>
   );
 }
+
+export function meta() { return [{ title: "お気に入り | 飯塚のリノベ" }]; }

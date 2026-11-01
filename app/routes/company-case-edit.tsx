@@ -1,9 +1,10 @@
 import type { Route } from "./+types/company-case-edit";
 import { ImagePlus } from "lucide-react";
-import { data, Form, useLocation } from "react-router";
+import { data, useLocation } from "react-router";
 import { z } from "zod";
-import { Button } from "../components/atoms";
 import { Field } from "../components/molecules";
+import { ManagedForm, SubmitButton } from "../features/forms/managed-form";
+import { validationErrors, priceErrors } from "../features/forms/validation";
 import { DashboardLayout } from "../components/templates";
 import type { CaseStudy } from "../features/cases/types";
 import { requireAuthorization } from "../features/auth/authorization.client";
@@ -46,12 +47,11 @@ export async function clientAction({ request, params }: Route.ClientActionArgs) 
   const authorization = await requireAuthorization(request, { roles: ["COMPANY", "ADMIN"] });
   const formData = await request.formData();
   const result = caseSchema.safeParse(Object.fromEntries(formData));
-  if (!result.success) return data({ error: "入力内容を確認してください。" }, { status: 400 });
+  if (!result.success) return data({ error: "入力内容を確認してください。", fieldErrors: validationErrors(result.error) }, { status: 400 });
   const priceMin = parsePrice(result.data.priceMin);
   const priceMax = parsePrice(result.data.priceMax);
-  if (priceMin === undefined || priceMax === undefined || (priceMin !== null && priceMax !== null && priceMin > priceMax)) {
-    return data({ error: "予算の下限と上限を確認してください。" }, { status: 400 });
-  }
+  const fieldErrors = priceErrors(result.data.priceMin, result.data.priceMax);
+  if (Object.keys(fieldErrors).length) return data({ error: "予算の下限と上限を確認してください。", fieldErrors }, { status: 400 });
   if (isSupabaseConfigured() && params.caseId) {
     const supabase = getSupabaseBrowserClient();
     const { data: currentCase, error: currentCaseError } = await supabase.from("construction_cases")
@@ -226,7 +226,8 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
       <header className="page-heading"><h1>施工事例の編集</h1></header>
       {actionData && "saved" in actionData && actionData.saved ? <p className="success-message" role="status">施工事例を保存しました。</p> : null}
       {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
-      <Form method="post" encType="multipart/form-data" className="edit-form">
+      <ManagedForm protect method="post" encType="multipart/form-data" className="edit-form">
+        <p className="form-hint">写真は登録順に表示します。施工前・施工後の区別は表示しません。</p>
         <section className="case-photo-editor">
           {loaderData.caseImages.map((image) => (
             <div className="case-photo-item" key={image.id}>
@@ -241,19 +242,21 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
         </section>
         <section className="form-card">
           <div className="form-grid">
-            <Field label="タイトル"><input name="title" defaultValue={loaderData.item.title} required /></Field>
+            <Field label="タイトル"><input name="title" maxLength={160} defaultValue={loaderData.item.title} required /></Field>
             <Field label="施工地域"><input name="area" defaultValue={loaderData.item.area} /></Field>
             <Field label="施工期間"><input name="period" defaultValue={loaderData.item.period} /></Field>
-            <Field label="費用下限"><input name="priceMin" type="number" min="0" max="2147483647" defaultValue={loaderData.item.priceMin ?? ""} /></Field>
-            <Field label="費用上限"><input name="priceMax" type="number" min="0" max="2147483647" defaultValue={loaderData.item.priceMax ?? ""} /></Field>
+            <Field label="費用下限（円）"><input name="priceMin" type="number" min="0" max="2147483647" defaultValue={loaderData.item.priceMin ?? ""} /></Field>
+            <Field label="費用上限（円）"><input name="priceMax" type="number" min="0" max="2147483647" defaultValue={loaderData.item.priceMax ?? ""} /></Field>
           </div>
-          <Field label="概要"><textarea name="summary" rows={4} defaultValue={loaderData.item.summary} /></Field>
+          <Field label="概要"><textarea name="summary" maxLength={2000} rows={4} defaultValue={loaderData.item.summary} /></Field>
           <Field label="公開状態"><select name="status" defaultValue={loaderData.item.status ?? "DRAFT"}><option value="DRAFT">下書き</option><option value="PUBLISHED">公開</option><option value="ARCHIVED">非公開（アーカイブ）</option></select></Field>
           <fieldset className="choice-list"><legend>リノベーション箇所</legend>{loaderData.categories.map((category) => <label key={category.id}><input type="checkbox" name="categoryIds" value={category.id} defaultChecked={loaderData.selectedCategoryIds.includes(category.id)} />{category.name}{!category.is_active ? "（現在は非表示）" : ""}</label>)}</fieldset>
           <fieldset className="choice-list"><legend>こだわり条件</legend>{loaderData.styles.map((style) => <label key={style.id}><input type="checkbox" name="styleIds" value={style.id} defaultChecked={loaderData.selectedStyleIds.includes(style.id)} />{style.name}{!style.is_active ? "（現在は非表示）" : ""}</label>)}</fieldset>
-          <div className="form-actions"><Button type="submit">更新する</Button></div>
+          <div className="form-actions"><SubmitButton>更新する</SubmitButton></div>
         </section>
-      </Form>
+      </ManagedForm>
     </DashboardLayout>
   );
 }
+
+export function meta() { return [{ title: "施工事例の編集 | 飯塚のリノベ" }]; }

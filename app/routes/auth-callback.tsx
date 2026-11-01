@@ -33,7 +33,7 @@ export default function AuthCallbackRoute() {
   }, [navigate, searchParams]);
 
   return (
-    <main className="auth-callback">
+    <main id="main-content" tabIndex={-1} className="auth-callback">
       <h1>{error ? "認証エラー" : "認証しています"}</h1>
       <p role={error ? "alert" : "status"}>{error || "そのままお待ちください…"}</p>
       {error ? <Link className="button button--primary" to="/login">ログインへ戻る</Link> : null}

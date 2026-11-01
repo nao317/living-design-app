@@ -1,1 +1,1 @@
-export { clientAction, clientLoader, default, HydrateFallback, loader } from "./company-case-edit";
+export { clientAction, clientLoader, default, HydrateFallback, loader, meta } from "./company-case-edit";

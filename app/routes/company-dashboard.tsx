@@ -150,3 +150,5 @@ export default function CompanyDashboardRoute({ loaderData, actionData }: Route.
     </DashboardLayout>
   );
 }
+
+export function meta() { return [{ title: "企業管理 | 飯塚のリノベ" }]; }

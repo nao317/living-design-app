@@ -7,6 +7,10 @@ import { fetchCompanyById } from "../features/cases/public-data.client";
 import type { CompanyProfile } from "../features/cases/types";
 import { StorageImage } from "../features/media/storage-image";
 
+export function meta({ loaderData }: Route.MetaArgs) {
+  return [{ title: `${loaderData?.company?.name ?? "企業情報"} | 飯塚のリノベ` }];
+}
+
 export function loader() {
   return { company: null as CompanyProfile | null, cases: [] };
 }

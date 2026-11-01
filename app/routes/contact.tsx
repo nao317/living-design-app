@@ -1,7 +1,9 @@
 import type { Route } from "./+types/contact";
-import { data, Form, Link, useNavigation } from "react-router";
+import { data, Link } from "react-router";
+import { useState } from "react";
 import { z } from "zod";
-import { Button } from "../components/atoms";
+import { ManagedForm, SubmitButton } from "../features/forms/managed-form";
+import { validationErrors } from "../features/forms/validation";
 import { Field } from "../components/molecules";
 import { PublicLayout } from "../components/templates";
 import { fetchPublishedCompanyContacts } from "../features/cases/public-data.client";
@@ -12,11 +14,13 @@ const contactSchema = z.object({
   email: z.email(),
   companyId: z.uuid(),
   caseId: z.uuid().optional(),
-  subject: z.enum(["renovation", "company", "account", "other"]),
+  subject: z.enum(["renovation", "company", "other"]),
   message: z.string().trim().min(10).max(2000),
 });
 
 type PublicCompany = { id: string; name: string };
+
+export function meta() { return [{ title: "お問い合わせ | 飯塚のリノベ" }]; }
 
 export function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
@@ -60,7 +64,6 @@ async function findCompany(companyId: string): Promise<PublicCompany | null> {
 const subjectLabels = {
   renovation: "リノベーション・施工について",
   company: "掲載企業について",
-  account: "会員登録・アカウントについて",
   other: "その他",
 } as const;
 
@@ -68,14 +71,14 @@ export async function action({ request }: Route.ActionArgs) {
   const result = contactSchema.safeParse(Object.fromEntries(await request.formData()));
   if (!result.success) {
     return data(
-      { sent: false, error: "入力内容を確認してください。企業の選択とお問い合わせ内容は必須です。" },
+      { sent: false, error: "入力内容を確認してください。", fieldErrors: validationErrors(result.error) },
       { status: 400 },
     );
   }
 
   const company = await findCompany(result.data.companyId);
   if (!company) {
-    return data({ sent: false, error: "選択した企業が見つかりません。" }, { status: 400 });
+    return data({ sent: false, error: "選択した企業が見つかりません。", fieldErrors: { companyId: "問い合わせ先の企業を選び直してください。" } }, { status: 400 });
   }
 
   const messageError = await createContactMessage({
@@ -91,54 +94,52 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function ContactRoute({ loaderData, actionData }: Route.ComponentProps) {
-  const navigation = useNavigation();
-  const submitting = navigation.state === "submitting";
+  const [selectedCompanyId, setSelectedCompanyId] = useState(loaderData.selectedCompanyId);
+  const selectedCompany = loaderData.companies.find((company) => company.id === selectedCompanyId);
 
   return (
     <PublicLayout>
       <div className="public-page contact-page">
         <header className="contact-heading">
           <h1>お問い合わせ</h1>
-          <p>施工のご相談、掲載企業、会員登録についてなど、お気軽にお問い合わせください。</p>
+          <p>施工や見積もりのご相談を、選択した企業へ直接送信します。</p>
         </header>
 
         <section className="contact-panel" aria-label="お問い合わせフォーム">
           {actionData?.sent ? (
             <div className="form-success" role="status">
-              お問い合わせを受け付けました。選択した企業のダッシュボードに届けました。
+              お問い合わせを送信しました。企業からの返信をお待ちください。
             </div>
           ) : (
-            <Form method="post" className="contact-form">
+            <ManagedForm protect method="post" className="contact-form">
               {actionData?.error ? <p className="form-error" role="alert">{actionData.error}</p> : null}
               <Field label="お問い合わせ先企業">
-                <select name="companyId" defaultValue={loaderData.selectedCompanyId} required>
+                <select name="companyId" value={selectedCompanyId} onChange={(event) => setSelectedCompanyId(event.target.value)} required>
                   <option value="">企業を選択してください</option>
                   {loaderData.companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
                 </select>
               </Field>
+              <p className="recipient-preview" role="status">{selectedCompany ? `送信先：${selectedCompany.name}` : "送信先の企業を選択してください。"}</p>
               {loaderData.caseId ? <input type="hidden" name="caseId" value={loaderData.caseId} /> : null}
               <Field label="お名前">
                 <input name="name" autoComplete="name" required maxLength={80} />
               </Field>
               <Field label="メールアドレス">
-                <input type="email" name="email" autoComplete="email" required />
+                <input type="email" name="email" autoComplete="email" spellCheck={false} required />
               </Field>
               <Field label="お問い合わせ種別">
                 <select name="subject" defaultValue="renovation" required>
                   <option value="renovation">リノベーション・施工について</option>
                   <option value="company">掲載企業について</option>
-                  <option value="account">会員登録・アカウントについて</option>
-                  <option value="other">その他</option>
+                  <option value="other">その他（選択した企業へのご相談）</option>
                 </select>
               </Field>
               <Field label="お問い合わせ内容" hint="10文字以上、2,000文字以内で入力してください。">
                 <textarea name="message" required minLength={10} maxLength={2000} />
               </Field>
-              <Button type="submit" disabled={submitting || loaderData.companies.length === 0}>
-                {submitting ? "送信中…" : "送信する"}
-              </Button>
+              <SubmitButton pendingLabel="送信中…" disabled={loaderData.companies.length === 0}>送信する</SubmitButton>
               {loaderData.companies.length === 0 ? <p className="form-error" role="alert">問い合わせ可能な企業が登録されていません。</p> : null}
-            </Form>
+            </ManagedForm>
           )}
         </section>
 
@@ -149,6 +150,7 @@ export default function ContactRoute({ loaderData, actionData }: Route.Component
             から企業を選ぶと、問い合わせ先を指定できます。
           </p>
         </section>
+        <section className="contact-guidance"><h2>会員登録・ログインについて</h2><p><Link to="/signup">新規登録</Link>、<Link to="/login">ログイン</Link>、<Link to="/forgot-password">パスワードの再設定</Link>をご利用ください。</p></section>
       </div>
     </PublicLayout>
   );
