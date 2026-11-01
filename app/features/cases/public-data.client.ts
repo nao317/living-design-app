@@ -3,6 +3,7 @@ import { getSupabaseBrowserClient, isSupabaseConfigured } from "../../lib/supaba
 import type { CaseStudy, CompanyContactOption, CompanyMember, CompanyProfile, CompanySummary, ContactMessage } from "./types";
 import type { SearchParams } from "../search/schema";
 import { filterSearchRecords, type SearchRecord } from "../search/filter";
+import { formatPriceRange } from "./format";
 
 type CaseRow = {
   id: string;
@@ -49,10 +50,7 @@ type ContactMessageRow = {
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function formatPrice(row: CaseRow) {
-  if (row.price_min === null && row.price_max === null) return "";
-  if (row.price_min === null) return `〜${row.price_max}`;
-  if (row.price_max === null) return `${row.price_min}〜`;
-  return `${row.price_min}〜${row.price_max}`;
+  return formatPriceRange(row.price_min, row.price_max);
 }
 
 function parsePeriodMonths(value: string) {

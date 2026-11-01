@@ -4,7 +4,7 @@ import { Sidebar } from "../organisms";
 export function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <div className="public-layout">
-      <main>{children}</main>
+      <main id="main-content" tabIndex={-1}>{children}</main>
     </div>
   );
 }
@@ -13,7 +13,7 @@ export function DashboardLayout({ children, type = "user" }: { children: ReactNo
   return (
     <div className="dashboard-shell">
       <Sidebar type={type} />
-      <main className="dashboard-main">{children}</main>
+      <main id="main-content" tabIndex={-1} className="dashboard-main">{children}</main>
     </div>
   );
 }

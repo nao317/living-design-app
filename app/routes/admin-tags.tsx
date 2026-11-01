@@ -77,3 +77,5 @@ export default function AdminTagsRoute({ loaderData, actionData }: Route.Compone
     </section>
   </DashboardLayout>;
 }
+
+export function meta() { return [{ title: "検索項目の申請審査 | 飯塚のリノベ" }]; }

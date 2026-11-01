@@ -1,6 +1,6 @@
 import { Heart, Home, House, Menu, PencilLine, Plus, Search, X } from "lucide-react";
 import { Form, Link, NavLink, useNavigate } from "react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import type { CaseStudy } from "../../features/cases/types";
 import type { SearchParams } from "../../features/search/schema";
@@ -15,6 +15,8 @@ export function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [authorization, setAuthorization] = useState<AuthorizationContext | null>(null);
   const navigate = useNavigate();
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const menu = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
@@ -50,9 +52,35 @@ export function Header() {
   useEffect(() => {
     if (!open) return;
     const previousOverflow = document.body.style.overflow;
+    const returnFocus = menuButton.current;
+    const content = document.getElementById("page-content");
+    const previousInert = content?.inert ?? false;
     document.body.style.overflow = "hidden";
+    if (content) content.inert = true;
+    // Wait for the closed panel's visibility style to clear before moving focus.
+    const focusFrame = requestAnimationFrame(() => {
+      menu.current?.querySelector<HTMLElement>("a, button")?.focus({ preventScroll: true });
+    });
+    function keydown(event: KeyboardEvent) {
+      if (event.key === "Escape") { event.preventDefault(); setOpen(false); }
+      if (event.key !== "Tab") return;
+      const targets = [...(menu.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? []), menuButton.current].filter((item): item is HTMLElement => Boolean(item));
+      const index = targets.indexOf(document.activeElement as HTMLElement);
+      const next = event.shiftKey ? (index <= 0 ? targets.length - 1 : index - 1) : (index + 1) % targets.length;
+      event.preventDefault();
+      targets[next]?.focus();
+    }
+    const desktop = window.matchMedia("(min-width: 821px)");
+    const resize = () => { if (desktop.matches) setOpen(false); };
+    document.addEventListener("keydown", keydown);
+    desktop.addEventListener("change", resize);
     return () => {
       document.body.style.overflow = previousOverflow;
+      cancelAnimationFrame(focusFrame);
+      if (content) content.inert = previousInert;
+      document.removeEventListener("keydown", keydown);
+      desktop.removeEventListener("change", resize);
+      returnFocus?.focus();
     };
   }, [open]);
 
@@ -71,8 +99,8 @@ export function Header() {
           <House size={25} strokeWidth={2.25} aria-hidden="true" />
           <span>飯塚のリノベ</span>
         </Link>
-        {open ? <button type="button" className="menu-backdrop" aria-label="メニューの外側をクリックして閉じる" onClick={() => setOpen(false)} /> : null}
-        <nav id="site-navigation" className={open ? "header-nav is-open" : "header-nav"} aria-label="メインメニュー" onClick={() => setOpen(false)}>
+        {open ? <button type="button" className="menu-backdrop" tabIndex={-1} aria-label="メニューの外側をクリックして閉じる" onClick={() => setOpen(false)} /> : null}
+        <nav ref={menu} id="site-navigation" className={open ? "header-nav is-open" : "header-nav"} aria-label="メインメニュー" onClick={() => setOpen(false)}>
           <Link to="/search">施工事例を探す</Link>
           <Link to="/companies">企業を探す</Link>
           <Link to="/contact">お問い合わせ</Link>
@@ -89,6 +117,7 @@ export function Header() {
         </nav>
         <button
           type="button"
+          ref={menuButton}
           className="menu-button"
           onClick={() => setOpen((value) => !value)}
           aria-controls="site-navigation"
@@ -146,8 +175,13 @@ export function Filters({ compact = false, filters, categories = [], styles = []
   categories?: SearchOption[];
   styles?: SearchOption[];
 }) {
+  const [open, setOpen] = useState(false);
+  const count = filters ? [filters.q, filters.area, filters.category, filters.style, filters.priceMin !== undefined, filters.priceMax !== undefined, filters.period].filter(Boolean).length : 0;
   return (
-    <Form key={filters ? JSON.stringify(filters) : "home"} method="get" action="/search" className={compact ? "filters filters--home" : "filters"}>
+    <section className={compact ? "filter-panel filter-panel--home" : `filter-panel${open ? " is-open" : ""}`}>
+    {!compact ? <button type="button" className="filter-toggle button button--secondary" aria-expanded={open} aria-controls="search-filters" onClick={() => setOpen((current) => !current)}>検索条件{count ? `（${count}件指定）` : "を指定"}{open ? "を閉じる" : ""}</button> : null}
+    <div id="search-filters" className="filter-panel__content">
+    <Form key={filters ? JSON.stringify(filters) : "home"} method="get" action="/search" onSubmit={() => setOpen(false)} className={compact ? "filters filters--home" : "filters"}>
       <h2>絞り込み検索</h2>
       <label>キーワード<input name="q" defaultValue={filters?.q ?? ""} maxLength={100} placeholder="施工箇所・地域・会社名" /></label>
       <label>施工地域<input name="area" defaultValue={filters?.area ?? ""} maxLength={120} placeholder="地域を入力" /></label>
@@ -157,9 +191,9 @@ export function Filters({ compact = false, filters, categories = [], styles = []
           {categories.map((category) => <option key={category.slug} value={category.slug}>{category.name}</option>)}
         </select>
       </label>
-      <label>予算
-        <span className="range-fields"><input name="priceMin" type="number" min="0" inputMode="numeric" defaultValue={filters?.priceMin ?? ""} aria-label="予算下限" /><span>〜</span><input name="priceMax" type="number" min="0" inputMode="numeric" defaultValue={filters?.priceMax ?? ""} aria-label="予算上限" /></span>
-      </label>
+      <fieldset className="budget-field"><legend>予算（円）</legend>
+        <span className="range-fields"><input name="priceMin" type="number" min="0" max="2147483647" inputMode="numeric" defaultValue={filters?.priceMin ?? ""} aria-label="予算下限（円）" placeholder="下限" /><span aria-hidden="true">〜</span><input name="priceMax" type="number" min="0" max="2147483647" inputMode="numeric" defaultValue={filters?.priceMax ?? ""} aria-label="予算上限（円）" placeholder="上限" /></span>
+      </fieldset>
       <label>施工期間
         <select name="period" defaultValue={filters?.period ?? ""}>
           <option value="">指定なし</option>
@@ -182,6 +216,9 @@ export function Filters({ compact = false, filters, categories = [], styles = []
         </select>
       </label>
       <Button type="submit">検索する</Button>
+      <Link className="filter-clear" to="/search" onClick={() => setOpen(false)}>条件をクリア</Link>
     </Form>
+    </div>
+    </section>
   );
 }

@@ -34,12 +34,14 @@ export default function MyPageRoute({ loaderData }: { loaderData: ReturnType<typ
       </section>
       <section className="dashboard-section">
         <div className="section-header"><h2>新着の施工事例</h2><Link to="/search">一覧を見る</Link></div>
-        <CaseGrid items={loaderData.newCases} />
+        {loaderData.newCases.length ? <CaseGrid items={loaderData.newCases} /> : <div className="empty-state"><p>公開中の施工事例はまだありません。</p><Link to="/companies">企業を探す</Link></div>}
       </section>
       <section className="dashboard-section">
         <div className="section-header"><h2>お気に入りの施工事例</h2><Link to="/mypage/favorites">一覧を見る</Link></div>
-        <CaseGrid items={loaderData.favoriteCases} />
+        {loaderData.favoriteCases.length ? <CaseGrid items={loaderData.favoriteCases} /> : <div className="empty-state"><p>お気に入りはまだありません。気になる施工事例を保存できます。</p><Link to="/search">施工事例を探す</Link></div>}
       </section>
     </DashboardLayout>
   );
 }
+
+export function meta() { return [{ title: "マイページ | 飯塚のリノベ" }]; }
