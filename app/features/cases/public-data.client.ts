@@ -165,13 +165,14 @@ async function fetchCasesByRows(rows: CaseRow[], includeGallery = false) {
   })).then((items) => items.filter((item): item is CaseStudy => item !== null));
 }
 
-export async function fetchPublishedCases() {
+export async function fetchPublishedCases(limit = 6) {
   if (!isSupabaseConfigured()) return [];
   const supabase = getSupabaseBrowserClient();
   const { data, error } = await supabase.from("construction_cases")
     .select("id, company_id, title, summary, area, price_min, price_max, construction_period")
     .eq("status", "PUBLISHED")
-    .order("published_at", { ascending: false });
+    .order("published_at", { ascending: false })
+    .limit(limit);
   if (error) throw error;
   return fetchCasesByRows((data ?? []) as CaseRow[]);
 }
@@ -310,19 +311,23 @@ export async function fetchCaseById(caseId: string) {
 export async function fetchCompanyById(companyId: string) {
   if (!isSupabaseConfigured() || !uuidPattern.test(companyId)) return null;
   const supabase = getSupabaseBrowserClient();
-  const { data, error } = await supabase.from("companies")
-    .select("id, name, email, address, phone, founded_year, business_hours, website_url, description, logo_path, cover_image_path")
-    .eq("id", companyId)
-    .neq("status", "SUSPENDED")
-    .maybeSingle();
+  const [companyResult, casesResult] = await Promise.all([
+    supabase.from("companies")
+      .select("id, name, email, address, phone, founded_year, business_hours, website_url, description, logo_path, cover_image_path")
+      .eq("id", companyId)
+      .neq("status", "SUSPENDED")
+      .maybeSingle(),
+    supabase.from("construction_cases")
+      .select("id, company_id, title, summary, area, price_min, price_max, construction_period")
+      .eq("company_id", companyId)
+      .eq("status", "PUBLISHED")
+      .order("published_at", { ascending: false }),
+  ]);
+  const { data, error } = companyResult;
   if (error) throw error;
   if (!data) return null;
   const company = data as CompanyRow;
-  const { data: caseRows, error: casesError } = await supabase.from("construction_cases")
-    .select("id, company_id, title, summary, area, price_min, price_max, construction_period")
-    .eq("company_id", companyId)
-    .eq("status", "PUBLISHED")
-    .order("published_at", { ascending: false });
+  const { data: caseRows, error: casesError } = casesResult;
   if (casesError) throw casesError;
 
   const companyImagePath = company.cover_image_path ?? company.logo_path;
@@ -363,10 +368,12 @@ export async function fetchPublishedCompanies(): Promise<CompanySummary[]> {
   }));
 }
 
-export async function fetchFavoriteCases() {
+export async function fetchFavoriteCases(limit?: number) {
   if (!isSupabaseConfigured()) return [];
   const supabase = getSupabaseBrowserClient();
-  const { data, error } = await supabase.from("favorites").select("case_id");
+  let favoritesQuery = supabase.from("favorites").select("case_id");
+  if (limit !== undefined) favoritesQuery = favoritesQuery.limit(limit);
+  const { data, error } = await favoritesQuery;
   if (error) throw error;
   const ids = (data ?? []).map((favorite) => favorite.case_id);
   if (!ids.length) return [];

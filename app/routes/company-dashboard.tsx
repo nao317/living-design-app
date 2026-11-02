@@ -1,8 +1,8 @@
-import { data, Form, Link } from "react-router";
+import { data, Link } from "react-router";
 import { z } from "zod";
-import { Avatar, Button } from "../components/atoms";
+import { Avatar } from "../components/atoms";
 import { CaseCard } from "../components/molecules";
-import { DashboardLayout } from "../components/templates";
+import { DashboardLayout } from "../components/templates/dashboard-layout";
 import type { Route } from "./+types/company-dashboard";
 import { getAuthorizationContext, requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
@@ -11,6 +11,7 @@ import { removeImages } from "../features/media/image-storage.client";
 import { fetchManagedCompany } from "../features/cases/public-data.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 import type { CaseStudy, CompanyMember, CompanyProfile, ContactMessage } from "../features/cases/types";
+import { InlineActionForm, PendingActionButton } from "../features/forms/inline-action-form";
 
 export function loader() {
   return { company: null as CompanyProfile | null, cases: [] as CaseStudy[], members: [] as CompanyMember[], messages: [] as ContactMessage[] };
@@ -81,8 +82,8 @@ export default function CompanyDashboardRoute({ loaderData, actionData }: Route.
     <DashboardLayout type="company">
       <header className="company-summary">
         <div>
-          <p>{loaderData.company.name}</p>
-          <h1>{loaderData.company.description}</h1>
+          <h1>{loaderData.company.name}</h1>
+          <p>{loaderData.company.description || "企業紹介は準備中です。"}</p>
           <Link className="button button--secondary" to="/company/profile/edit">企業情報を編集</Link>
         </div>
         {loaderData.company.image ? <StorageImage width={400} height={190} src={loaderData.company.image} storagePath={loaderData.company.imagePath} bucket="company-assets" alt={loaderData.company.name} /> : <div className="image-empty">企業画像未登録</div>}
@@ -96,13 +97,9 @@ export default function CompanyDashboardRoute({ loaderData, actionData }: Route.
             <CaseCard item={item} />
             <div className="managed-case__actions">
               <Link className="button button--secondary" to={`/company/cases/${item.id}/edit`}>編集</Link>
-              <Form method="post" onSubmit={(event) => {
-                if (!window.confirm(`「${item.title}」を削除しますか？この操作は取り消せません。`)) event.preventDefault();
-              }}>
-                <input type="hidden" name="intent" value="delete-case" />
-                <input type="hidden" name="caseId" value={item.id} />
-                <Button type="submit" variant="danger">削除</Button>
-              </Form>
+              <InlineActionForm confirmMessage={`「${item.title}」を削除しますか？この操作は取り消せません。`}>
+                {({ pending }) => <><input type="hidden" name="intent" value="delete-case" /><input type="hidden" name="caseId" value={item.id} /><PendingActionButton pending={pending} pendingLabel="削除中…" variant="danger">削除</PendingActionButton></>}
+              </InlineActionForm>
             </div>
           </div>)}
         </div> : <div className="empty-state"><p>施工事例はまだありません。</p></div>}
@@ -121,11 +118,9 @@ export default function CompanyDashboardRoute({ loaderData, actionData }: Route.
                     <span>{new Date(message.createdAt).toLocaleString("ja-JP")}</span>
                   </div>
                   {message.status === "NEW" ? (
-                    <Form method="post">
-                      <input type="hidden" name="intent" value="mark-read" />
-                      <input type="hidden" name="messageId" value={message.id} />
-                      <button className="button button--ghost" type="submit">既読にする</button>
-                    </Form>
+                    <InlineActionForm>
+                      {({ pending }) => <><input type="hidden" name="intent" value="mark-read" /><input type="hidden" name="messageId" value={message.id} /><PendingActionButton pending={pending} pendingLabel="更新中…" variant="ghost">既読にする</PendingActionButton></>}
+                    </InlineActionForm>
                   ) : <span className="contact-message__status">既読</span>}
                 </div>
                 <dl className="contact-message__sender">
@@ -143,8 +138,9 @@ export default function CompanyDashboardRoute({ loaderData, actionData }: Route.
         <div className="section-header"><h2>所属ユーザー</h2></div>
         <div className="member-list">
           {loaderData.members.map((member) => (
-            <div key={member.id}><Avatar name={member.name} /><strong>{member.name}</strong><span>{member.email}</span><small>{member.role}</small></div>
+            <div key={member.id}><Avatar name={member.name} /><strong>{member.name}</strong>{member.email ? <span>{member.email}</span> : <span>メールアドレス非公開</span>}<small>{member.role === "OWNER" ? "所有者" : member.role === "ADMIN" ? "管理者" : "担当者"}</small></div>
           ))}
+          {loaderData.members.length === 0 ? <p>所属ユーザーはいません。</p> : null}
         </div>
       </section>
     </DashboardLayout>

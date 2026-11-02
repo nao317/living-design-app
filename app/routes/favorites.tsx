@@ -1,6 +1,6 @@
 import { CaseList } from "../components/organisms";
 import { Pagination } from "../components/molecules";
-import { DashboardLayout } from "../components/templates";
+import { DashboardLayout } from "../components/templates/dashboard-layout";
 import type { Route } from "./+types/favorites";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";

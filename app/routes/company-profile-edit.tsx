@@ -2,11 +2,10 @@ import type { Route } from "./+types/company-profile-edit";
 import { Camera, Plus, Trash2 } from "lucide-react";
 import { data } from "react-router";
 import { z } from "zod";
-import { Tag } from "../components/atoms";
 import { Field } from "../components/molecules";
 import { ManagedForm, SubmitButton } from "../features/forms/managed-form";
 import { validationErrors } from "../features/forms/validation";
-import { DashboardLayout } from "../components/templates";
+import { DashboardLayout } from "../components/templates/dashboard-layout";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { getAuthorizationContext } from "../features/auth/authorization.client";
@@ -189,7 +188,6 @@ export default function CompanyProfileEditRoute({ loaderData, actionData }: Rout
             <Field label="営業時間"><input name="businessHours" defaultValue={loaderData.company.businessHours} /></Field>
           </div>
           <Field label="企業紹介"><textarea name="description" rows={3} defaultValue={loaderData.company.description} /></Field>
-          <div className="feature-editor"><span>アピールポイント</span>{loaderData.company.features.map((feature) => <Tag key={feature}>{feature}</Tag>)}<button type="button"><Plus aria-hidden="true" size={14} />追加</button></div>
           <div className="form-actions"><SubmitButton>更新する</SubmitButton></div>
         </section>
       </ManagedForm>

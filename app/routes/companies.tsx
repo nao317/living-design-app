@@ -1,7 +1,8 @@
 import type { Route } from "./+types/companies";
 import { Link } from "react-router";
 import { CompanySearchBar, Pagination } from "../components/molecules";
-import { PublicLayout } from "../components/templates";
+import { PublicLayout } from "../components/templates/public-layout";
+import { PublicRouteFallback } from "../components/templates/public-route-fallback";
 import { fetchPublishedCompanies } from "../features/cases/public-data.client";
 import type { CompanySummary } from "../features/cases/types";
 import { StorageImage } from "../features/media/storage-image";
@@ -15,7 +16,7 @@ export function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
-  const companies = await fetchPublishedCompanies();
+  const [companies, serverData] = await Promise.all([fetchPublishedCompanies(), serverLoader()]);
   const params = new URL(request.url).searchParams;
   const query = params.get("q")?.trim() ?? "";
   const filtered = query
@@ -26,7 +27,7 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
   const page = Number.isInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
   const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
   return {
-    ...(await serverLoader()),
+    ...serverData,
     items: visible,
     total: filtered.length,
     page,
@@ -35,6 +36,10 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
 }
 
 clientLoader.hydrate = true as const;
+
+export function HydrateFallback() {
+  return <PublicRouteFallback label="企業情報を読み込んでいます…" />;
+}
 
 export default function CompaniesRoute({ loaderData }: Route.ComponentProps) {
   return (
@@ -50,8 +55,8 @@ export default function CompaniesRoute({ loaderData }: Route.ComponentProps) {
                   {company.imagePath ? <StorageImage width={150} height={150} src={company.image} storagePath={company.imagePath} bucket="company-assets" preset="card" alt="" /> : <div className="image-empty">企業画像未登録</div>}
                   <div>
                     <h2>{company.name}</h2>
-                    <p>{company.description}</p>
-                    <p className="company-directory__address">{company.address}</p>
+                    <p>{company.description || "企業紹介は準備中です。"}</p>
+                    <p className="company-directory__address">{company.address || "所在地未登録"}</p>
                     <Link className="button button--secondary" to={`/companies/${company.id}`}>企業情報を見る</Link>
                   </div>
                 </article>

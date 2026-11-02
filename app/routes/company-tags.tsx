@@ -1,13 +1,13 @@
 import type { Route } from "./+types/company-tags";
-import { data, Form } from "react-router";
+import { data } from "react-router";
 import { z } from "zod";
-import { Button } from "../components/atoms";
 import { Field } from "../components/molecules";
-import { DashboardLayout } from "../components/templates";
+import { DashboardLayout } from "../components/templates/dashboard-layout";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { kindLabel, operationLabel, statusLabel, type TaxonomyOption, type TaxonomyRequest } from "../features/taxonomy/types";
 import { getSupabaseBrowserClient } from "../lib/supabase.client";
+import { InlineActionForm, PendingActionButton } from "../features/forms/inline-action-form";
 
 const requestSchema = z.object({
   kind: z.enum(["CATEGORY", "STYLE"]),
@@ -73,27 +73,27 @@ export default function CompanyTagsRoute({ loaderData, actionData }: Route.Compo
     {actionData && "saved" in actionData && actionData.saved ? <p className="success-message" role="status">申請を更新しました。</p> : null}
     {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
     <section className="dashboard-section"><h2>新しい項目を追加</h2>
-      <Form method="post" className="edit-form"><input type="hidden" name="intent" value="request" /><input type="hidden" name="operation" value="CREATE" />
+      <InlineActionForm className="edit-form" successMessage="申請しました。">{({ pending }) => <><input type="hidden" name="intent" value="request" /><input type="hidden" name="operation" value="CREATE" />
         <div className="form-grid"><Field label="種類"><select name="kind"><option value="CATEGORY">リノベーション箇所</option><option value="STYLE">こだわり条件</option></select></Field>
           <Field label="項目名"><input name="name" required maxLength={100} /></Field></div>
         <Field label="申請理由"><textarea name="reason" required maxLength={1000} rows={3} /></Field>
-        <div className="form-actions"><Button type="submit">追加を申請</Button></div>
-      </Form>
+        <div className="form-actions"><PendingActionButton pending={pending} pendingLabel="申請中…">追加を申請</PendingActionButton></div>
+      </>}</InlineActionForm>
     </section>
     {(["CATEGORY", "STYLE"] as const).map((kind) => <section className="dashboard-section" key={kind}>
       <h2>{kindLabel[kind]}の変更</h2>
       {(kind === "CATEGORY" ? loaderData.categories : loaderData.styles).length === 0 ? <p>項目はありません。</p> :
         <div className="member-list taxonomy-list">{(kind === "CATEGORY" ? loaderData.categories : loaderData.styles).map((option) => <div key={option.id}>
           <strong>{option.name}</strong>
-          <Form method="post" className="inline-form"><input type="hidden" name="intent" value="request" /><input type="hidden" name="kind" value={kind} /><input type="hidden" name="operation" value="EDIT" /><input type="hidden" name="targetId" value={option.id} />
+          <InlineActionForm className="inline-form" successMessage="申請しました。">{({ pending }) => <><input type="hidden" name="intent" value="request" /><input type="hidden" name="kind" value={kind} /><input type="hidden" name="operation" value="EDIT" /><input type="hidden" name="targetId" value={option.id} />
             <input name="name" defaultValue={option.name} required maxLength={100} aria-label={`${option.name}の新しい名称`} />
             <input name="reason" required maxLength={1000} autoComplete="off" placeholder="例：利用者に伝わりやすい名称に変更…" aria-label={`${option.name}の変更理由`} />
-            <Button type="submit" variant="secondary">名称変更を申請</Button>
-          </Form>
-          <Form method="post" className="inline-form"><input type="hidden" name="intent" value="request" /><input type="hidden" name="kind" value={kind} /><input type="hidden" name="operation" value="DELETE" /><input type="hidden" name="targetId" value={option.id} />
+            <PendingActionButton pending={pending} pendingLabel="申請中…" variant="secondary">名称変更を申請</PendingActionButton>
+          </>}</InlineActionForm>
+          <InlineActionForm className="inline-form" confirmMessage={`「${option.name}」の削除を申請しますか？`} successMessage="申請しました。">{({ pending }) => <><input type="hidden" name="intent" value="request" /><input type="hidden" name="kind" value={kind} /><input type="hidden" name="operation" value="DELETE" /><input type="hidden" name="targetId" value={option.id} />
             <input name="reason" required maxLength={1000} autoComplete="off" placeholder="例：同じ意味の項目があるため…" aria-label={`${option.name}の削除理由`} />
-            <Button type="submit" variant="secondary">削除を申請</Button>
-          </Form>
+            <PendingActionButton pending={pending} pendingLabel="申請中…" variant="secondary">削除を申請</PendingActionButton>
+          </>}</InlineActionForm>
         </div>)}</div>}
     </section>)}
     <section className="dashboard-section"><h2>申請履歴</h2>
@@ -101,7 +101,7 @@ export default function CompanyTagsRoute({ loaderData, actionData }: Route.Compo
         <strong>{kindLabel[item.kind]}・{operationLabel[item.operation]}：{item.proposed_name ?? names.get(item.target_id ?? "") ?? "対象項目"}</strong>
         <span>{item.reason}</span><small>{statusLabel[item.status]} · {new Date(item.created_at).toLocaleString("ja-JP")}</small>
         {item.review_reason ? <span>審査理由：{item.review_reason}</span> : null}
-        {item.status === "PENDING" ? <Form method="post"><input type="hidden" name="intent" value="withdraw" /><input type="hidden" name="requestId" value={item.id} /><Button type="submit" variant="secondary">取り下げる</Button></Form> : null}
+        {item.status === "PENDING" ? <InlineActionForm confirmMessage="この申請を取り下げますか？">{({ pending }) => <><input type="hidden" name="intent" value="withdraw" /><input type="hidden" name="requestId" value={item.id} /><PendingActionButton pending={pending} pendingLabel="取り下げ中…" variant="secondary">取り下げる</PendingActionButton></>}</InlineActionForm> : null}
       </div>)}</div>}
     </section>
   </DashboardLayout>;

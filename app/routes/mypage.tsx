@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { SearchBar } from "../components/molecules";
 import { CaseGrid } from "../components/organisms";
-import { DashboardLayout } from "../components/templates";
+import { DashboardLayout } from "../components/templates/dashboard-layout";
 import type { Route } from "./+types/mypage";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
@@ -14,7 +14,7 @@ export function loader() {
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
   await requireAuthorization(request, { role: "GENERAL" });
-  const [newCases, favoriteCases] = await Promise.all([fetchPublishedCases(), fetchFavoriteCases()]);
+  const [newCases, favoriteCases] = await Promise.all([fetchPublishedCases(6), fetchFavoriteCases(6)]);
   return { ...(await serverLoader()), newCases, favoriteCases };
 }
 

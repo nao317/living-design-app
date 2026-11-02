@@ -2,10 +2,11 @@ import type { Route } from "./+types/company-detail";
 import { ExternalLink } from "lucide-react";
 import { Link } from "react-router";
 import { Tag } from "../components/atoms";
-import { PublicLayout } from "../components/templates";
+import { PublicLayout } from "../components/templates/public-layout";
 import { fetchCompanyById } from "../features/cases/public-data.client";
 import type { CompanyProfile } from "../features/cases/types";
 import { StorageImage } from "../features/media/storage-image";
+import { PublicRouteFallback } from "../components/templates/public-route-fallback";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: `${loaderData?.company?.name ?? "企業情報"} | 飯塚のリノベ` }];
@@ -23,6 +24,10 @@ export async function clientLoader({ params, serverLoader }: Route.ClientLoaderA
 
 clientLoader.hydrate = true as const;
 
+export function HydrateFallback() {
+  return <PublicRouteFallback label="企業情報を読み込んでいます…" />;
+}
+
 export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps) {
   if (!loaderData.company) return <PublicLayout><div className="public-page empty-state"><h1>企業が見つかりません</h1></div></PublicLayout>;
 
@@ -32,8 +37,8 @@ export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps)
         <section className="company-detail-hero">
           <div>
             <h1>{loaderData.company.name}</h1>
-            <p>{loaderData.company.description}</p>
-            <div>{loaderData.company.features.map((feature) => <Tag key={feature}>{feature}</Tag>)}</div>
+            <p>{loaderData.company.description || "企業紹介は準備中です。"}</p>
+            {loaderData.company.features.length ? <div>{loaderData.company.features.map((feature) => <Tag key={feature}>{feature}</Tag>)}</div> : null}
           </div>
           {loaderData.company.image ? <StorageImage width={580} height={220} src={loaderData.company.image} storagePath={loaderData.company.imagePath} bucket="company-assets" alt={loaderData.company.name} loading="eager" fetchPriority="high" /> : <div className="image-empty">企業画像未登録</div>}
         </section>
@@ -46,10 +51,10 @@ export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps)
             <h2>会社情報</h2>
             <dl>
               <div><dt>会社名</dt><dd>{loaderData.company.name}</dd></div>
-              <div><dt>所在地</dt><dd>{loaderData.company.address}</dd></div>
-              <div><dt>営業時間</dt><dd>{loaderData.company.businessHours}</dd></div>
-              <div><dt>電話番号</dt><dd>{loaderData.company.phone}</dd></div>
-              <div><dt>設立</dt><dd>{loaderData.company.founded}</dd></div>
+              <div><dt>所在地</dt><dd>{loaderData.company.address || "未登録"}</dd></div>
+              <div><dt>営業時間</dt><dd>{loaderData.company.businessHours || "未登録"}</dd></div>
+              <div><dt>電話番号</dt><dd>{loaderData.company.phone ? <a href={`tel:${loaderData.company.phone.replace(/[^0-9+]/g, "")}`}>{loaderData.company.phone}</a> : "未登録"}</dd></div>
+              <div><dt>設立</dt><dd>{loaderData.company.founded || "未登録"}</dd></div>
             </dl>
             {loaderData.company.website ? <a className="button button--secondary" href={loaderData.company.website}>ホームページ <ExternalLink aria-hidden="true" size={14} /></a> : null}
             <Link className="button button--primary" to={"/contact?companyId=" + loaderData.company.id}>問い合わせる</Link>

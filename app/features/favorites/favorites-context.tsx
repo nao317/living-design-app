@@ -1,5 +1,4 @@
 import { createContext, use, useEffect, useState, type ReactNode } from "react";
-import { getSupabaseBrowserClient } from "../../lib/supabase.client";
 import { useAuth } from "../auth/auth-context";
 import type { AuthorizationContext } from "../auth/authorization.client";
 
@@ -21,10 +20,12 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     if (!userId) return;
     let active = true;
     let changedDuringLoad = false;
-    void getSupabaseBrowserClient().from("favorites").select("case_id").eq("user_id", userId).then(({ data, error }) => {
+    void import("../../lib/supabase.client")
+      .then(({ getSupabaseBrowserClient }) => getSupabaseBrowserClient().from("favorites").select("case_id").eq("user_id", userId))
+      .then(({ data, error }) => {
       if (!active || changedDuringLoad) return;
       setLoaded({ userId, ids: new Set((data ?? []).map((row) => row.case_id as string)), error: Boolean(error) });
-    }, () => { if (active) setLoaded({ userId, ids: emptyIds, error: true }); });
+      }, () => { if (active) setLoaded({ userId, ids: emptyIds, error: true }); });
 
     const changed = (event: Event) => {
       const detail = (event as CustomEvent<{ userId: string; caseId: string; saved: boolean }>).detail;

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Field } from "../components/molecules";
 import { ManagedForm, SubmitButton } from "../features/forms/managed-form";
 import { validationErrors, priceErrors } from "../features/forms/validation";
-import { DashboardLayout } from "../components/templates";
+import { DashboardLayout } from "../components/templates/dashboard-layout";
 import { requireAuthorization, getAuthorizationContext } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { isImageFile, MAX_CASE_IMAGES, MAX_IMAGE_BYTES, removeImages, uploadImage, validateCaseImageCount } from "../features/media/image-storage.client";

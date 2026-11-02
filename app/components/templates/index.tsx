@@ -1,19 +1,2 @@
-import type { ReactNode } from "react";
-import { Sidebar } from "../organisms";
-
-export function PublicLayout({ children }: { children: ReactNode }) {
-  return (
-    <div className="public-layout">
-      <main id="main-content" tabIndex={-1}>{children}</main>
-    </div>
-  );
-}
-
-export function DashboardLayout({ children, type = "user" }: { children: ReactNode; type?: "user" | "company" | "admin" }) {
-  return (
-    <div className="dashboard-shell">
-      <Sidebar type={type} />
-      <main id="main-content" tabIndex={-1} className="dashboard-main">{children}</main>
-    </div>
-  );
-}
+export { PublicLayout } from "./public-layout";
+export { DashboardLayout } from "./dashboard-layout";

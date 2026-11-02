@@ -1,5 +1,18 @@
 import { expect, test } from "@playwright/test";
 
+test("クライアントデータの読込前に誤った空状態をSSRしない", async ({ request }) => {
+  for (const [path, loadingText, falseEmptyText] of [
+    ["/companies", "企業情報を読み込んでいます", "登録されている企業がありません"],
+    ["/contact", "お問い合わせ先を読み込んでいます", "問い合わせ可能な企業が登録されていません"],
+    ["/cases/00000000-0000-0000-0000-000000000000", "施工事例を読み込んでいます", "施工事例が見つかりません"],
+  ]) {
+    const response = await request.get(path);
+    const body = await response.text();
+    expect(body).toContain(loadingText);
+    expect(body).not.toContain(falseEmptyText);
+  }
+});
+
 test("公開画面にページタイトルと本文へのリンクがある", async ({ page }) => {
   for (const [path, title] of [["/companies", "企業を探す"], ["/contact", "お問い合わせ"], ["/login", "ログイン"], ["/signup", "新規登録"], ["/forgot-password", "パスワードの再設定"], ["/reset-password", "新しいパスワードを設定"]]) {
     await page.goto(path, { waitUntil: "domcontentloaded" });
@@ -30,7 +43,7 @@ test("モバイルメニューのフォーカスが背景へ移らずEscapeで�
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "メニューを開く" }).click();
-  await expect(page.getByRole("link", { name: "施工事例を探す" })).toBeFocused();
+  await expect(page.getByRole("navigation", { name: "メインメニュー" }).getByRole("link", { name: "施工事例を探す" })).toBeFocused();
   for (let index = 0; index < 8; index++) {
     await page.keyboard.press(index % 3 === 0 ? "Shift+Tab" : "Tab");
     expect(await page.evaluate(() => Boolean(document.activeElement?.closest(".header-nav, .menu-button")))).toBe(true);
