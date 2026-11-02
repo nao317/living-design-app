@@ -95,10 +95,12 @@ test("スマホではブランドが左、メニューが右にあり、メニ�
   expect(menuBox).not.toBeNull();
   expect(brandBox).not.toBeNull();
   expect(brandBox!.x).toBeLessThan(menuBox!.x);
+  await expect(brand).toContainText("飯塚のリノベ");
 
   await menuButton.click();
-  await expect(page.getByRole("navigation", { name: "メインメニュー" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "施工事例を探す" })).toBeVisible();
+  const mainMenu = page.getByRole("navigation", { name: "メインメニュー" });
+  await expect(mainMenu).toBeVisible();
+  await expect(mainMenu.getByRole("link", { name: "施工事例を探す" })).toBeVisible();
   await expect(page.getByRole("button", { name: "メニューを閉じる" })).toHaveAttribute("aria-expanded", "true");
 });
 
@@ -120,7 +122,7 @@ test("お問い合わせページは共通ヘッダーだけを使い、サイ�
 
 test("企業を探すリンクは企業一覧へ遷移する", async ({ page }) => {
   await page.goto("/", { waitUntil: "domcontentloaded" });
-  await page.getByRole("link", { name: "企業を探す" }).click();
+  await page.getByRole("navigation", { name: "メインメニュー" }).getByRole("link", { name: "企業を探す" }).click();
   await expect(page).toHaveURL(/\/companies$/);
   await expect(page.getByRole("heading", { name: "企業を探す" })).toBeVisible();
 });

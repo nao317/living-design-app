@@ -57,17 +57,18 @@ export function Field({ label, children, hint }: { label: string; children: Reac
   );
 }
 
-export function FavoriteButton({ caseId, compact = false }: { caseId: string; compact?: boolean }) {
+function FavoriteControl({ caseId, presentation }: { caseId: string; presentation: "icon" | "label" }) {
   const { state: { authorization, ids }, meta: { ready, error } } = useFavorites();
   const fetcher = useFetcher<typeof favoriteAction>({ key: `favorite:${caseId}` });
   const location = useLocation();
   const active = ids.has(caseId);
   const pending = fetcher.state !== "idle";
   if (authorization && authorization.accountRole !== "GENERAL") return null;
+  const iconOnly = presentation === "icon";
   if (ready && !error && !authorization) return <Link
     className="favorite" to={`/login?redirectTo=${encodeURIComponent(location.pathname + location.search)}`}
     aria-label="ログインしてお気に入りに追加"
-  ><Heart size={15} aria-hidden="true" />{compact ? null : "お気に入りへ"}</Link>;
+  ><Heart size={15} aria-hidden="true" />{iconOnly ? null : "お気に入りへ"}</Link>;
 
   return (
     <span className="favorite-control">
@@ -82,7 +83,7 @@ export function FavoriteButton({ caseId, compact = false }: { caseId: string; co
       aria-pressed={active}
     >
       <Heart size={15} fill={active ? "currentColor" : "none"} aria-hidden="true" />
-      {compact ? null : pending ? "保存中…" : active ? "お気に入り済み" : "お気に入りへ"}
+      {iconOnly ? null : pending ? "保存中…" : active ? "お気に入り済み" : "お気に入りへ"}
     </button>
     {fetcher.data?.error || error ? <small className="field-error" role="alert">{fetcher.data?.error || "お気に入りを読み込めませんでした。再読み込みしてください。"}</small> : null}
     <span className="sr-only" role="status">{pending ? "お気に入りを保存しています…" : fetcher.data && !fetcher.data.error ? active ? "お気に入りに保存しました。" : "お気に入りから削除しました。" : ""}</span>
@@ -90,10 +91,18 @@ export function FavoriteButton({ caseId, compact = false }: { caseId: string; co
   );
 }
 
+export function FavoriteButton({ caseId }: { caseId: string }) {
+  return <FavoriteControl caseId={caseId} presentation="label" />;
+}
+
+export function FavoriteIconButton({ caseId }: { caseId: string }) {
+  return <FavoriteControl caseId={caseId} presentation="icon" />;
+}
+
 export function CaseCard({ item }: { item: CaseStudy }) {
   return (
     <article className="case-card">
-      <Link to={"/cases/" + item.id} className="case-card__image" aria-label={item.title + "の画像を見る"}>
+      <Link to={"/cases/" + item.id} className="case-card__image" aria-label={item.title + "の詳細を見る"}>
         {item.image ? <StorageImage width={800} height={472} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /> : <span className="image-empty">画像未登録</span>}
       </Link>
       <div className="case-card__body">
@@ -102,7 +111,7 @@ export function CaseCard({ item }: { item: CaseStudy }) {
         <p><Building2 aria-hidden="true" size={13} />{item.company}</p>
         <div className="case-card__meta">
           <span><MapPin aria-hidden="true" size={13} />{item.area}</span>
-          <FavoriteButton caseId={item.id} compact />
+          <FavoriteIconButton caseId={item.id} />
         </div>
       </div>
     </article>
@@ -121,7 +130,7 @@ export function CaseListItem({ item }: { item: CaseStudy }) {
       <div className="case-list-item__body">
         <h2><Link to={detailUrl}>{item.title}</Link></h2>
         <p className="case-list-item__company"><Building2 aria-hidden="true" size={14} />{item.company}</p>
-        <p>{item.categories.join("・")} / {item.area}</p>
+        <p>{item.categories.join("・") || "箇所未登録"} / {item.area || "地域未登録"}</p>
         <p>費用目安：{item.price} / 施工期間：{item.period}</p>
       </div>
       <div className="case-list-item__actions">

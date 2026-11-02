@@ -1,12 +1,12 @@
 import type { Route } from "./+types/admin-tags";
-import { data, Form } from "react-router";
+import { data } from "react-router";
 import { z } from "zod";
-import { Button } from "../components/atoms";
-import { DashboardLayout } from "../components/templates";
+import { DashboardLayout } from "../components/templates/dashboard-layout";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { kindLabel, operationLabel, statusLabel, type TaxonomyOption, type TaxonomyRequest } from "../features/taxonomy/types";
 import { getSupabaseBrowserClient } from "../lib/supabase.client";
+import { InlineActionForm, PendingActionButton } from "../features/forms/inline-action-form";
 
 type CompanyName = { id: string; name: string };
 
@@ -61,11 +61,11 @@ export default function AdminTagsRoute({ loaderData, actionData }: Route.Compone
         <strong>{describe(item)}</strong><span>申請企業：{companyNames.get(item.company_id) ?? item.company_id}</span>
         {item.target_id ? <span>現在の項目：{itemNames.get(item.target_id) ?? "対象項目が見つかりません"}</span> : null}
         <span>申請理由：{item.reason}</span><small>{new Date(item.created_at).toLocaleString("ja-JP")}</small>
-        <Form method="post" className="inline-form"><input type="hidden" name="requestId" value={item.id} />
+        <InlineActionForm className="inline-form" successMessage="審査結果を保存しました。">{({ pending }) => <><input type="hidden" name="requestId" value={item.id} />
           <input name="reviewReason" maxLength={1000} autoComplete="off" placeholder="例：同じ項目が登録済みのため…" aria-label={`${describe(item)}の審査理由`} />
-          <Button type="submit" name="decision" value="APPROVED">承認</Button>
-          <Button type="submit" name="decision" value="REJECTED" variant="secondary">却下</Button>
-        </Form>
+          <PendingActionButton pending={pending} pendingLabel="保存中…" name="decision" value="APPROVED">承認</PendingActionButton>
+          <PendingActionButton pending={pending} pendingLabel="保存中…" name="decision" value="REJECTED" variant="secondary" onClick={(event) => { if (!window.confirm("この申請を却下しますか？")) event.preventDefault(); }}>却下</PendingActionButton>
+        </>}</InlineActionForm>
       </div>)}</div>}
     </section>
     <section className="dashboard-section"><h2>審査履歴</h2>

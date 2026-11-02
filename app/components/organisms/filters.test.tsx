@@ -1,13 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
-import { Filters } from "./index";
+import { SearchFilters } from "./filters";
 
-describe("Filters", () => {
+describe("SearchFilters", () => {
   it("restores combined URL conditions and uses all supplied master options", () => {
     const router = createMemoryRouter([{
       path: "/",
-      element: <Filters
+      element: <SearchFilters
           filters={{ q: "収納", area: "飯塚", category: "interior", style: "natural", priceMin: 100, priceMax: 300, period: "3", sort: "price_asc", page: 2 }}
           categories={[{ slug: "interior", name: "内装" }]}
           styles={[{ slug: "natural", name: "自然素材" }]}

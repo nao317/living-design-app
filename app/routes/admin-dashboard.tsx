@@ -1,11 +1,11 @@
 import type { Route } from "./+types/admin-dashboard";
-import { data, Form, Link } from "react-router";
+import { data, Link } from "react-router";
 import { z } from "zod";
-import { Button } from "../components/atoms";
-import { DashboardLayout } from "../components/templates";
+import { DashboardLayout } from "../components/templates/dashboard-layout";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { getSupabaseBrowserClient } from "../lib/supabase.client";
+import { InlineActionForm, PendingActionButton } from "../features/forms/inline-action-form";
 
 type AdminUser = {
   id: string;
@@ -27,6 +27,8 @@ type AdminApplication = {
 type AdminCase = { id: string; title: string; status: string; company_id: string };
 
 const roleSchema = z.enum(["GENERAL", "COMPANY", "ADMIN"]);
+const applicationStatusLabel = { PENDING: "審査中", APPROVED: "承認済み", REJECTED: "却下" } as const;
+const caseStatusLabel: Record<string, string> = { DRAFT: "下書き", PUBLISHED: "公開", ARCHIVED: "非公開" };
 
 export function loader() {
   return { users: [], companies: [], applications: [], posts: [] as AdminCase[] };
@@ -123,18 +125,14 @@ export default function AdminDashboardRoute({ loaderData, actionData }: Route.Co
           {loaderData.users.map((user) => (
             <div key={user.id}>
               <strong>{user.display_name}</strong><span>{user.id}</span>
-              <Form method="post" className="inline-form">
-                <input type="hidden" name="intent" value="set-role" />
-                <input type="hidden" name="userId" value={user.id} />
-                <select name="accountRole" defaultValue={user.account_role} aria-label={`${user.display_name}のアカウントロール`}>
-                  <option value="GENERAL">一般</option><option value="COMPANY">企業</option><option value="ADMIN">管理者</option>
-                </select>
-                <select name="companyId" defaultValue="" aria-label={`${user.display_name}の所属企業`}>
-                  <option value="">企業を選択</option>
-                  {loaderData.companies.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
-                </select>
-                <Button type="submit">保存</Button>
-              </Form>
+              <InlineActionForm className="inline-form" successMessage="保存しました。">
+                {({ pending }) => <>
+                  <input type="hidden" name="intent" value="set-role" /><input type="hidden" name="userId" value={user.id} />
+                  <select name="accountRole" defaultValue={user.account_role} aria-label={`${user.display_name}のアカウントロール`}><option value="GENERAL">一般</option><option value="COMPANY">企業</option><option value="ADMIN">管理者</option></select>
+                  <select name="companyId" defaultValue="" aria-label={`${user.display_name}の所属企業`}><option value="">所属企業なし</option>{loaderData.companies.map((entry) => <option key={entry.id} value={entry.id}>{entry.name}</option>)}</select>
+                  <PendingActionButton pending={pending} pendingLabel="保存中…">保存</PendingActionButton>
+                </>}
+              </InlineActionForm>
             </div>
           ))}
         </div>
@@ -144,12 +142,14 @@ export default function AdminDashboardRoute({ loaderData, actionData }: Route.Co
         <div className="member-list">
           {loaderData.applications.length === 0 ? <p>申請はありません。</p> : loaderData.applications.map((application) => (
             <div key={application.id}>
-              <strong>{application.company_name}</strong><span>{application.description || "企業紹介未入力"}</span><small>{application.status}</small>
+              <strong>{application.company_name}</strong><span>{application.description || "企業紹介未入力"}</span><small>{applicationStatusLabel[application.status]}</small>
               {application.status === "PENDING" ? (
-                <span className="form-actions">
-                  <Form method="post"><input type="hidden" name="intent" value="approve-application" /><input type="hidden" name="applicationId" value={application.id} /><Button type="submit">承認</Button></Form>
-                  <Form method="post"><input type="hidden" name="intent" value="reject-application" /><input type="hidden" name="applicationId" value={application.id} /><Button type="submit" variant="secondary">却下</Button></Form>
-                </span>
+                <div className="form-actions">
+                  <InlineActionForm>{({ pending }) => <><input type="hidden" name="intent" value="approve-application" /><input type="hidden" name="applicationId" value={application.id} /><PendingActionButton pending={pending} pendingLabel="承認中…">承認</PendingActionButton></>}</InlineActionForm>
+                  <InlineActionForm confirmMessage={`「${application.company_name}」の申請を却下しますか？`}>
+                    {({ pending }) => <><input type="hidden" name="intent" value="reject-application" /><input type="hidden" name="applicationId" value={application.id} /><PendingActionButton pending={pending} pendingLabel="却下中…" variant="secondary">却下</PendingActionButton></>}
+                  </InlineActionForm>
+                </div>
               ) : null}
             </div>
           ))}
@@ -159,7 +159,7 @@ export default function AdminDashboardRoute({ loaderData, actionData }: Route.Co
         <div className="section-header"><h2>施工事例管理</h2><Link to="/search">公開一覧を見る</Link></div>
         <div className="member-list">
           {loaderData.posts.map((post) => (
-            <div key={post.id}><strong>{post.title}</strong><span>{post.status}</span><Link to={`/admin/cases/${post.id}/edit`}>編集</Link><Form method="post" onSubmit={(event) => { if (!window.confirm(`「${post.title}」を削除しますか？この操作は取り消せません。`)) event.preventDefault(); }}><input type="hidden" name="intent" value="delete-case" /><input type="hidden" name="caseId" value={post.id} /><Button type="submit" variant="danger">削除</Button></Form></div>
+            <div key={post.id}><strong>{post.title}</strong><span>{caseStatusLabel[post.status] ?? post.status}</span><Link to={`/admin/cases/${post.id}/edit`}>編集</Link><InlineActionForm confirmMessage={`「${post.title}」を削除しますか？この操作は取り消せません。`}>{({ pending }) => <><input type="hidden" name="intent" value="delete-case" /><input type="hidden" name="caseId" value={post.id} /><PendingActionButton pending={pending} pendingLabel="削除中…" variant="danger">削除</PendingActionButton></>}</InlineActionForm></div>
           ))}
         </div>
       </section>

@@ -1,5 +1,7 @@
-import { Filters } from "../components/organisms";
-import { PublicLayout } from "../components/templates";
+import { Link } from "react-router";
+import { HomeFilters } from "../components/organisms/filters";
+import { PublicLayout } from "../components/templates/public-layout";
+import { PublicRouteFallback } from "../components/templates/public-route-fallback";
 import { media } from "../data/media";
 import { fetchSearchOptions, type SearchOption } from "../features/cases/public-data.client";
 import type { Route } from "./+types/home";
@@ -9,16 +11,21 @@ export function loader() {
 }
 
 export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
-  const serverData = await serverLoader();
+  const serverDataPromise = serverLoader();
   try {
-    return { ...serverData, ...(await fetchSearchOptions()) };
+    const [serverData, options] = await Promise.all([serverDataPromise, fetchSearchOptions()]);
+    return { ...serverData, ...options };
   } catch (error) {
     console.error("Failed to load search options", error);
-    return serverData;
+    return serverDataPromise;
   }
 }
 
 clientLoader.hydrate = true as const;
+
+export function HydrateFallback() {
+  return <PublicRouteFallback label="検索条件を読み込んでいます…" />;
+}
 
 export function meta() {
   return [
@@ -31,12 +38,43 @@ export default function HomeRoute({ loaderData }: Route.ComponentProps) {
   return (
     <PublicLayout>
       <div className="public-page home-page">
-        <section className="home-hero" style={{ backgroundImage: "url(" + media.house + ")" }}>
+        <section className="home-hero">
+          <img className="home-hero__image" src={media.house} alt="" width={1200} height={675} fetchPriority="high" />
           <div>
             <h1>飯塚で理想のリフォーム＆<br />リノベーション</h1>
           </div>
         </section>
-        <Filters compact categories={loaderData.categories} styles={loaderData.styles} />
+        <HomeFilters categories={loaderData.categories} styles={loaderData.styles} />
+        <section className="home-guide" aria-labelledby="home-guide-title">
+          <div className="home-section-heading">
+            <p>はじめての方へ</p>
+            <h2 id="home-guide-title">希望に合う事例と企業を見つける3ステップ</h2>
+          </div>
+          <ul className="home-guide__steps">
+            <li>
+              <span className="home-guide__number">1.</span>
+              <div>
+                <h3>条件から探す</h3>
+                <p>場所や予算、こだわりから施工事例を絞り込みます。</p>
+              </div>
+            </li>
+            <li>
+              <span className="home-guide__number">2.</span>
+              <div>
+                <h3>事例と企業を比べる</h3>
+                <p>気になる事例を保存し、施工企業の情報を確認します。</p>
+              </div>
+            </li>
+            <li>
+              <span className="home-guide__number">3.</span>
+              <div>
+                <h3>企業へ相談する</h3>
+                <p>問い合わせ先を選び、施工や見積もりについて相談します。</p>
+              </div>
+            </li>
+          </ul>
+          <div className="home-guide__actions"><Link className="button button--primary" to="/search">施工事例を探す</Link><Link className="button button--secondary" to="/companies">企業を探す</Link></div>
+        </section>
       </div>
     </PublicLayout>
   );
