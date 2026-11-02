@@ -46,12 +46,33 @@ export default function HomeRoute({ loaderData }: Route.ComponentProps) {
         </section>
         <HomeFilters categories={loaderData.categories} styles={loaderData.styles} />
         <section className="home-guide" aria-labelledby="home-guide-title">
-          <div className="home-section-heading"><p>はじめての方へ</p><h2 id="home-guide-title">希望に合う事例と企業を見つける3ステップ</h2></div>
-          <ol>
-            <li><span>1</span><strong>条件から探す</strong><p>場所や予算、こだわりから施工事例を絞り込みます。</p></li>
-            <li><span>2</span><strong>事例と企業を比べる</strong><p>気になる事例を保存し、施工企業の情報を確認します。</p></li>
-            <li><span>3</span><strong>企業へ相談する</strong><p>問い合わせ先を選び、施工や見積もりについて相談します。</p></li>
-          </ol>
+          <div className="home-section-heading">
+            <p>はじめての方へ</p>
+            <h2 id="home-guide-title">希望に合う事例と企業を見つける3ステップ</h2>
+          </div>
+          <ul className="home-guide__steps">
+            <li>
+              <span className="home-guide__number">1.</span>
+              <div>
+                <h3>条件から探す</h3>
+                <p>場所や予算、こだわりから施工事例を絞り込みます。</p>
+              </div>
+            </li>
+            <li>
+              <span className="home-guide__number">2.</span>
+              <div>
+                <h3>事例と企業を比べる</h3>
+                <p>気になる事例を保存し、施工企業の情報を確認します。</p>
+              </div>
+            </li>
+            <li>
+              <span className="home-guide__number">3.</span>
+              <div>
+                <h3>企業へ相談する</h3>
+                <p>問い合わせ先を選び、施工や見積もりについて相談します。</p>
+              </div>
+            </li>
+          </ul>
           <div className="home-guide__actions"><Link className="button button--primary" to="/search">施工事例を探す</Link><Link className="button button--secondary" to="/companies">企業を探す</Link></div>
         </section>
       </div>

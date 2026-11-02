@@ -245,58 +245,86 @@ button[aria-busy="true"] { cursor: wait; }
 }
 
 .home-guide {
-  margin: 64px auto 0;
+  width: min(920px, 100%);
+  margin: 72px auto 0;
 }
 
 .home-section-heading {
-  text-align: center;
+  max-width: 720px;
 }
 
 .home-section-heading > p {
-  margin: 0 0 6px;
+  margin: 0 0 8px;
   color: var(--green-700);
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
+  letter-spacing: .02em;
+  line-height: 1.7;
 }
 
 .home-section-heading h2 {
   margin: 0;
-  font-size: clamp(20px, 3vw, 28px);
+  font-size: clamp(24px, 3vw, 28px);
+  letter-spacing: .02em;
+  line-height: 1.5;
 }
 
-.home-guide ol {
+.home-guide__steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-  margin: 28px 0 0;
+  margin: 32px 0 0;
   padding: 0;
   list-style: none;
 }
 
-.home-guide li {
+.home-guide__steps li {
   display: grid;
-  justify-items: center;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 24px 20px;
-  text-align: center;
+  min-width: 0;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-content: start;
+  gap: 12px;
+  border-left: 1px solid #949b95;
+  padding: 4px 28px;
 }
 
-.home-guide li > span {
-  display: grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--green-100);
+.home-guide__steps li:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.home-guide__steps li:last-child {
+  padding-right: 0;
+}
+
+.home-guide__number {
   color: var(--green-900);
+  font-size: 20px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+  line-height: 1.5;
 }
 
-.home-guide li strong { margin-top: 14px; }
-.home-guide li p { margin: 8px 0 0; color: var(--muted); font-size: 13px; line-height: 1.8; }
-.home-guide__actions { display: flex; justify-content: center; gap: 12px; margin-top: 24px; }
+.home-guide__steps h3 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: .02em;
+  line-height: 1.5;
+}
+
+.home-guide__steps p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 16px;
+  letter-spacing: .02em;
+  line-height: 1.7;
+}
+
+.home-guide__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+}
 
 .home-hero h1 {
   margin: 0;
@@ -1824,7 +1852,23 @@ button[aria-busy="true"] { cursor: wait; }
     padding-top: 12px;
   }
 
-  .home-guide ol { grid-template-columns: 1fr; }
+  .home-guide {
+    margin-top: 48px;
+  }
+
+  .home-guide__steps {
+    grid-template-columns: 1fr;
+    margin-top: 24px;
+  }
+
+  .home-guide__steps li,
+  .home-guide__steps li:first-child,
+  .home-guide__steps li:last-child {
+    border-top: 1px solid #949b95;
+    border-left: 0;
+    padding: 24px 0;
+  }
+
   .home-guide__actions { align-items: stretch; flex-direction: column; }
 
   .home-hero,
