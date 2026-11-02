@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Field } from "../components/molecules";
 import { ManagedForm, SubmitButton } from "../features/forms/managed-form";
 import { validationErrors } from "../features/forms/validation";
-import { DashboardLayout } from "../components/templates";
+import { DashboardLayout } from "../components/templates/dashboard-layout";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { getSupabaseBrowserClient } from "../lib/supabase.client";

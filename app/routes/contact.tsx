@@ -5,9 +5,10 @@ import { z } from "zod";
 import { ManagedForm, SubmitButton } from "../features/forms/managed-form";
 import { validationErrors } from "../features/forms/validation";
 import { Field } from "../components/molecules";
-import { PublicLayout } from "../components/templates";
+import { PublicLayout } from "../components/templates/public-layout";
 import { fetchPublishedCompanyContacts } from "../features/cases/public-data.client";
 import { createContactMessage } from "../features/contact/messages.server";
+import { PublicRouteFallback } from "../components/templates/public-route-fallback";
 
 const contactSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -32,14 +33,18 @@ export function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
-  const serverData = await serverLoader();
+  const [serverData, companies] = await Promise.all([serverLoader(), fetchPublishedCompanyContacts()]);
   return {
     ...serverData,
-    companies: await fetchPublishedCompanyContacts(),
+    companies,
   };
 }
 
 clientLoader.hydrate = true as const;
+
+export function HydrateFallback() {
+  return <PublicRouteFallback label="お問い合わせ先を読み込んでいます…" />;
+}
 
 async function findCompany(companyId: string): Promise<PublicCompany | null> {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -94,7 +99,8 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function ContactRoute({ loaderData, actionData }: Route.ComponentProps) {
-  const [selectedCompanyId, setSelectedCompanyId] = useState(loaderData.selectedCompanyId);
+  const [selection, setSelection] = useState({ source: loaderData.selectedCompanyId, value: loaderData.selectedCompanyId });
+  const selectedCompanyId = selection.source === loaderData.selectedCompanyId ? selection.value : loaderData.selectedCompanyId;
   const selectedCompany = loaderData.companies.find((company) => company.id === selectedCompanyId);
 
   return (
@@ -106,7 +112,13 @@ export default function ContactRoute({ loaderData, actionData }: Route.Component
         </header>
 
         <section className="contact-panel" aria-label="お問い合わせフォーム">
-          {actionData?.sent ? (
+          {loaderData.companies.length === 0 ? (
+            <div className="empty-state empty-state--compact">
+              <h2>現在問い合わせできる企業がありません</h2>
+              <p>企業の公開後に問い合わせできます。施工事例や企業情報は引き続きご覧いただけます。</p>
+              <Link className="button button--secondary" to="/companies">企業一覧を見る</Link>
+            </div>
+          ) : actionData?.sent ? (
             <div className="form-success" role="status">
               お問い合わせを送信しました。企業からの返信をお待ちください。
             </div>
@@ -114,7 +126,7 @@ export default function ContactRoute({ loaderData, actionData }: Route.Component
             <ManagedForm protect method="post" className="contact-form">
               {actionData?.error ? <p className="form-error" role="alert">{actionData.error}</p> : null}
               <Field label="お問い合わせ先企業">
-                <select name="companyId" value={selectedCompanyId} onChange={(event) => setSelectedCompanyId(event.target.value)} required>
+                <select name="companyId" value={selectedCompanyId} onChange={(event) => setSelection({ source: loaderData.selectedCompanyId, value: event.target.value })} required>
                   <option value="">企業を選択してください</option>
                   {loaderData.companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
                 </select>
@@ -137,8 +149,8 @@ export default function ContactRoute({ loaderData, actionData }: Route.Component
               <Field label="お問い合わせ内容" hint="10文字以上、2,000文字以内で入力してください。">
                 <textarea name="message" required minLength={10} maxLength={2000} />
               </Field>
-              <SubmitButton pendingLabel="送信中…" disabled={loaderData.companies.length === 0}>送信する</SubmitButton>
-              {loaderData.companies.length === 0 ? <p className="form-error" role="alert">問い合わせ可能な企業が登録されていません。</p> : null}
+              <SubmitButton pendingLabel="送信中…">送信する</SubmitButton>
+              <p className="form-hint">送信内容は選択した企業へ共有され、入力したメールアドレス宛てに返信されます。</p>
             </ManagedForm>
           )}
         </section>

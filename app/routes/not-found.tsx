@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { PublicLayout } from "../components/templates";
+import { PublicLayout } from "../components/templates/public-layout";
 
 export default function NotFoundRoute() {
   return (

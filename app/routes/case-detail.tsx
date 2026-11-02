@@ -3,11 +3,12 @@ import { ArrowLeft, Building2 } from "lucide-react";
 import { Link, useLocation } from "react-router";
 import { Tag } from "../components/atoms";
 import { FavoriteButton } from "../components/molecules";
-import { PublicLayout } from "../components/templates";
+import { PublicLayout } from "../components/templates/public-layout";
 import { fetchCaseById } from "../features/cases/public-data.client";
 import type { CaseStudy } from "../features/cases/types";
 import { StorageImage } from "../features/media/storage-image";
 import { CaseGallery } from "../features/media/case-gallery";
+import { PublicRouteFallback } from "../components/templates/public-route-fallback";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: `${loaderData?.item?.title ?? "施工事例"} | 飯塚のリノベ` }];
@@ -24,6 +25,10 @@ export async function clientLoader({ params, serverLoader }: Route.ClientLoaderA
 }
 
 clientLoader.hydrate = true as const;
+
+export function HydrateFallback() {
+  return <PublicRouteFallback label="施工事例を読み込んでいます…" />;
+}
 
 export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
   const location = useLocation();
@@ -44,11 +49,11 @@ export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
               <div>{item.categories.map((category) => <Tag key={category}>{category}</Tag>)}<h1>{item.title}</h1></div>
               <FavoriteButton caseId={item.id} />
             </div>
-            <p>{item.summary}</p>
+            <p>{item.summary || "この施工事例の概要は準備中です。"}</p>
             <dl className="case-specs">
               <div><dt>費用目安</dt><dd>{item.price}</dd></div>
               <div><dt>施工期間</dt><dd>{item.period || "要相談"}</dd></div>
-              <div><dt>施工エリア</dt><dd>{item.area}</dd></div>
+              <div><dt>施工エリア</dt><dd>{item.area || "要相談"}</dd></div>
             </dl>
           </section>
           <aside className="case-company">

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { Field } from "../components/molecules";
 import { ManagedForm, SubmitButton } from "../features/forms/managed-form";
 import { validationErrors, priceErrors } from "../features/forms/validation";
-import { DashboardLayout } from "../components/templates";
+import { DashboardLayout } from "../components/templates/dashboard-layout";
 import type { CaseStudy } from "../features/cases/types";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";

@@ -2,8 +2,9 @@ import type { Route } from "./+types/search";
 import { Pagination } from "../components/molecules";
 import { Link, useNavigation } from "react-router";
 import { formatPriceRange } from "../features/cases/format";
-import { CaseList, Filters } from "../components/organisms";
-import { PublicLayout } from "../components/templates";
+import { CaseList } from "../components/organisms";
+import { SearchFilters } from "../components/organisms/filters";
+import { PublicLayout } from "../components/templates/public-layout";
 import { hasInvalidPriceRange, parseSearchParams } from "../features/search/schema";
 import { fetchSearchOptions, searchPublishedCases, type SearchOption } from "../features/cases/public-data.client";
 import type { CaseStudy } from "../features/cases/types";
@@ -21,11 +22,12 @@ export function loader({ request }: Route.LoaderArgs) {
 }
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
-  const serverData = await serverLoader();
+  const serverDataPromise = serverLoader();
   const requestedFilters = parseSearchParams(new URL(request.url).searchParams);
-  let options = { categories: serverData.categories, styles: serverData.styles };
+  let options = { categories: [] as SearchOption[], styles: [] as SearchOption[] };
   try {
-    options = await fetchSearchOptions();
+    const [serverData, loadedOptions] = await Promise.all([serverDataPromise, fetchSearchOptions()]);
+    options = loadedOptions;
     const filters = {
       ...requestedFilters,
       category: options.categories.some((option) => option.slug === requestedFilters.category) ? requestedFilters.category : "",
@@ -40,6 +42,7 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
     return { ...serverData, ...options, ...results, filters: { ...filters, page } };
   } catch (error) {
     console.error("Failed to load case search", error);
+    const serverData = await serverDataPromise;
     return { ...serverData, ...options, filters: requestedFilters, loadError: true };
   }
 }
@@ -65,11 +68,12 @@ export default function SearchRoute({ loaderData }: Route.ComponentProps) {
   return (
     <PublicLayout>
       <div className="public-page search-page">
+        <header className="search-page__heading"><h1>施工事例を探す</h1></header>
         <div className="search-layout">
-          <Filters filters={loaderData.filters} categories={loaderData.categories} styles={loaderData.styles} />
+          <SearchFilters filters={loaderData.filters} categories={loaderData.categories} styles={loaderData.styles} />
           <section className="search-results" aria-labelledby="result-heading" aria-busy={navigation.state !== "idle"}>
             <div className="search-results__header">
-              <h1 id="result-heading">検索結果</h1>
+              <h2 id="result-heading">検索結果</h2>
               {loaderData.invalidPriceRange || loaderData.loadError ? null : <p role="status">{loaderData.total}件の施工事例が見つかりました</p>}
               {navigation.state !== "idle" ? <p role="status">検索中…</p> : null}
             </div>
