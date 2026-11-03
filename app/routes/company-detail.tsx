@@ -1,23 +1,28 @@
 import type { Route } from "./+types/company-detail";
 import { ExternalLink } from "lucide-react";
 import { Link } from "react-router";
+import { Pagination } from "../components/molecules";
 import { Tag } from "../components/atoms";
 import { PublicLayout } from "../components/templates/public-layout";
 import { fetchCompanyById } from "../features/cases/public-data.client";
 import type { CompanyProfile } from "../features/cases/types";
 import { StorageImage } from "../features/media/storage-image";
 import { PublicRouteFallback } from "../components/templates/public-route-fallback";
+import { parsePage } from "../features/pagination/pagination";
+
+const pageSize = 6;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [{ title: `${loaderData?.company?.name ?? "企業情報"} | 飯塚のリノベ` }];
 }
 
 export function loader() {
-  return { company: null as CompanyProfile | null, cases: [] };
+  return { company: null as CompanyProfile | null, cases: [], casesTotal: 0, casesPage: 1 };
 }
 
-export async function clientLoader({ params, serverLoader }: Route.ClientLoaderArgs) {
-  const result = params.companyId ? await fetchCompanyById(params.companyId) : null;
+export async function clientLoader({ request, params, serverLoader }: Route.ClientLoaderArgs) {
+  const page = parsePage(new URL(request.url).searchParams);
+  const result = params.companyId ? await fetchCompanyById(params.companyId, page, pageSize) : null;
   if (!result) throw new Response("企業が見つかりません", { status: 404 });
   return { ...(await serverLoader()), ...result };
 }
@@ -45,7 +50,7 @@ export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps)
         <div className="company-detail-body">
           <section className="company-works">
             <h2>施工事例</h2>
-            {loaderData.cases.length ? loaderData.cases.map((item) => <Link key={item.id} to={"/cases/" + item.id}><StorageImage width={85} height={60} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /><span>{item.title}</span></Link>) : <p>公開中の施工事例はまだありません。</p>}
+            {loaderData.cases.length ? <>{loaderData.cases.map((item) => <Link key={item.id} to={"/cases/" + item.id}><StorageImage width={85} height={60} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /><span>{item.title}</span></Link>)}<Pagination totalItems={loaderData.casesTotal} currentPage={loaderData.casesPage} pageSize={pageSize} /></> : <p>公開中の施工事例はまだありません。</p>}
           </section>
           <section className="company-information">
             <h2>会社情報</h2>

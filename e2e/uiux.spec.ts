@@ -59,6 +59,12 @@ test("企業検索欄のフォーカスと動きを減らす設定に対応す�
   await page.goto("/companies", { waitUntil: "domcontentloaded" });
   await page.getByRole("textbox").focus();
   expect(await page.getByRole("textbox").evaluate((element) => getComputedStyle(element).outlineStyle)).toBe("solid");
+  const searchFocus = await page.locator(".search-bar").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { outlineColor: style.outlineColor, boxShadow: style.boxShadow };
+  });
+  expect(searchFocus.outlineColor).toBe("rgb(0, 0, 0)");
+  expect(searchFocus.boxShadow).toContain("rgb(255, 212, 61)");
   expect(await page.locator(".header-nav").evaluate((element) => getComputedStyle(element).transitionDuration)).toBe("0s");
 });
 
