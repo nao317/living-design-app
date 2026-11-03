@@ -85,7 +85,7 @@ export default function SearchRoute({ loaderData }: Route.ComponentProps) {
             ) : loaderData.items.length ? (
               <>
                 <CaseList items={loaderData.items} />
-                <Pagination totalItems={loaderData.total} currentPage={loaderData.filters.page} pageSize={pageSize} />
+                <Pagination totalItems={loaderData.total} currentPage={loaderData.filters.page} pageSize={pageSize} showSinglePage />
               </>
             ) : (
               <div className="empty-state">

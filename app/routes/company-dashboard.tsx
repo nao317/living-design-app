@@ -121,7 +121,7 @@ export default function CompanyDashboardRoute({ loaderData, actionData }: Route.
             </div>
           </div>)}
         </div> : <div className="empty-state"><p>施工事例はまだありません。</p></div>}
-        <Pagination totalItems={loaderData.casesTotal} currentPage={loaderData.casesPage} pageSize={casesPageSize} paramName="casesPage" ariaLabel="施工事例のページ送り" />
+        <Pagination totalItems={loaderData.casesTotal} currentPage={loaderData.casesPage} pageSize={casesPageSize} paramName="casesPage" ariaLabel="施工事例のページ送り" showSinglePage />
       </section>
       <section className="dashboard-section">
         <div className="section-header">
