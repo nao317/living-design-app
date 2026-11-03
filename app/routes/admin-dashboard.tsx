@@ -6,6 +6,8 @@ import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { getSupabaseBrowserClient } from "../lib/supabase.client";
 import { InlineActionForm, PendingActionButton } from "../features/forms/inline-action-form";
+import { Pagination } from "../components/molecules";
+import { loadPage, parsePage } from "../features/pagination/pagination";
 
 type AdminUser = {
   id: string;
@@ -29,32 +31,40 @@ type AdminCase = { id: string; title: string; status: string; company_id: string
 const roleSchema = z.enum(["GENERAL", "COMPANY", "ADMIN"]);
 const applicationStatusLabel = { PENDING: "審査中", APPROVED: "承認済み", REJECTED: "却下" } as const;
 const caseStatusLabel: Record<string, string> = { DRAFT: "下書き", PUBLISHED: "公開", ARCHIVED: "非公開" };
+const pageSize = 10;
 
 export function loader() {
-  return { users: [], companies: [], applications: [], posts: [] as AdminCase[] };
+  return {
+    users: [] as AdminUser[], usersTotal: 0, usersPage: 1,
+    companies: [] as AdminCompany[],
+    applications: [] as AdminApplication[], applicationsTotal: 0, applicationsPage: 1,
+    posts: [] as AdminCase[], postsTotal: 0, postsPage: 1,
+  };
 }
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
   await requireAuthorization(request, { role: "ADMIN" });
   const supabase = getSupabaseBrowserClient();
-  const [usersResult, companiesResult, applicationsResult, casesResult] = await Promise.all([
-    supabase.from("profiles").select("id, display_name, account_role").order("created_at", { ascending: false }),
+  const params = new URL(request.url).searchParams;
+  const [users, companiesResult, applications, posts, serverData] = await Promise.all([
+    loadPage<AdminUser>(parsePage(params, "usersPage"), pageSize, (from, to) => supabase.from("profiles")
+      .select("id, display_name, account_role", { count: "exact" }).order("created_at", { ascending: false }).range(from, to)),
     supabase.from("companies").select("id, name").order("name"),
-    supabase.from("company_applications").select("id, applicant_id, company_name, description, status, created_at").order("created_at", { ascending: false }),
-    supabase.from("construction_cases").select("id, title, status, company_id").order("updated_at", { ascending: false }),
+    loadPage<AdminApplication>(parsePage(params, "applicationsPage"), pageSize, (from, to) => supabase.from("company_applications")
+      .select("id, applicant_id, company_name, description, status, created_at", { count: "exact" }).order("created_at", { ascending: false }).range(from, to)),
+    loadPage<AdminCase>(parsePage(params, "postsPage"), pageSize, (from, to) => supabase.from("construction_cases")
+      .select("id, title, status, company_id", { count: "exact" }).order("updated_at", { ascending: false }).range(from, to)),
+    serverLoader(),
   ]);
 
-  for (const result of [usersResult, companiesResult, applicationsResult, casesResult]) {
-    if (result.error) throw result.error;
-  }
+  if (companiesResult.error) throw companiesResult.error;
 
-  const serverData = await serverLoader();
   return {
     ...serverData,
-    users: (usersResult.data ?? []) as AdminUser[],
+    users: users.items, usersTotal: users.total, usersPage: users.page,
     companies: (companiesResult.data ?? []) as AdminCompany[],
-    applications: (applicationsResult.data ?? []) as AdminApplication[],
-    posts: (casesResult.data ?? []) as AdminCase[],
+    applications: applications.items, applicationsTotal: applications.total, applicationsPage: applications.page,
+    posts: posts.items, postsTotal: posts.total, postsPage: posts.page,
   };
 }
 
@@ -136,6 +146,7 @@ export default function AdminDashboardRoute({ loaderData, actionData }: Route.Co
             </div>
           ))}
         </div>
+        <Pagination totalItems={loaderData.usersTotal} currentPage={loaderData.usersPage} pageSize={pageSize} paramName="usersPage" ariaLabel="ユーザー管理のページ送り" />
       </section>
       <section className="dashboard-section">
         <div className="section-header"><h2>企業申請</h2></div>
@@ -154,6 +165,7 @@ export default function AdminDashboardRoute({ loaderData, actionData }: Route.Co
             </div>
           ))}
         </div>
+        <Pagination totalItems={loaderData.applicationsTotal} currentPage={loaderData.applicationsPage} pageSize={pageSize} paramName="applicationsPage" ariaLabel="企業申請のページ送り" />
       </section>
       <section className="dashboard-section">
         <div className="section-header"><h2>施工事例管理</h2><Link to="/search">公開一覧を見る</Link></div>
@@ -162,6 +174,7 @@ export default function AdminDashboardRoute({ loaderData, actionData }: Route.Co
             <div key={post.id}><strong>{post.title}</strong><span>{caseStatusLabel[post.status] ?? post.status}</span><Link to={`/admin/cases/${post.id}/edit`}>編集</Link><InlineActionForm confirmMessage={`「${post.title}」を削除しますか？この操作は取り消せません。`}>{({ pending }) => <><input type="hidden" name="intent" value="delete-case" /><input type="hidden" name="caseId" value={post.id} /><PendingActionButton pending={pending} pendingLabel="削除中…" variant="danger">削除</PendingActionButton></>}</InlineActionForm></div>
           ))}
         </div>
+        <Pagination totalItems={loaderData.postsTotal} currentPage={loaderData.postsPage} pageSize={pageSize} paramName="postsPage" ariaLabel="施工事例管理のページ送り" />
       </section>
     </DashboardLayout>
   );

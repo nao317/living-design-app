@@ -4,9 +4,10 @@ import { DashboardLayout } from "../components/templates/dashboard-layout";
 import type { Route } from "./+types/favorites";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
-import { fetchFavoriteCases } from "../features/cases/public-data.client";
+import { fetchFavoriteCasesPage } from "../features/cases/public-data.client";
 import type { CaseStudy } from "../features/cases/types";
 import { Link } from "react-router";
+import { parsePage } from "../features/pagination/pagination";
 
 const pageSize = 10;
 
@@ -16,15 +17,11 @@ export function loader() {
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
   await requireAuthorization(request, { role: "GENERAL" });
-  const allItems = await fetchFavoriteCases();
-  const requestedPage = Number(new URL(request.url).searchParams.get("page") ?? "1");
-  const totalPages = Math.max(1, Math.ceil(allItems.length / pageSize));
-  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
+  const params = new URL(request.url).searchParams;
+  const favorites = await fetchFavoriteCasesPage(parsePage(params), pageSize);
   return {
     ...(await serverLoader()),
-    items: allItems.slice((page - 1) * pageSize, page * pageSize),
-    total: allItems.length,
-    page,
+    ...favorites,
   };
 }
 

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CaseCard, FavoriteButton, Pagination } from "./index";
@@ -50,9 +50,33 @@ describe("CaseCard", () => {
   });
 });
 
-it("大量のページ番号を省略し、検索条件を保持する", () => {
+it("現在位置と前後のページを示し、検索条件を保持する", () => {
   render(<RouterProvider router={createMemoryRouter([{ path: "/", element: <Pagination totalItems={10_000_000} currentPage={500_000} /> }], { initialEntries: ["/?q=収納"] })} />);
-  expect(screen.getAllByRole("link").length).toBeLessThanOrEqual(6);
+  expect(screen.getAllByRole("link")).toHaveLength(2);
+  expect(screen.getByText("500,000ページ、全1,000,000ページ")).toHaveClass("sr-only");
   expect(screen.getByRole("link", { name: "次のページ" }).getAttribute("href")).toContain("page=500001");
   expect(new URLSearchParams(screen.getByRole("link", { name: "次のページ" }).getAttribute("href")!.slice(1)).get("q")).toBe("収納");
+});
+
+it("移動先がない前後リンクは非活性表示せず非表示にする", () => {
+  const router = createMemoryRouter([{ path: "/", element: <Pagination totalItems={30} currentPage={1} /> }]);
+  const { rerender } = render(<RouterProvider router={router} />);
+  expect(screen.queryByRole("link", { name: "前のページ" })).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "次のページ" })).toBeInTheDocument();
+
+  rerender(<RouterProvider router={createMemoryRouter([{ path: "/", element: <Pagination totalItems={30} currentPage={3} /> }])} />);
+  expect(screen.getByRole("link", { name: "前のページ" })).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "次のページ" })).not.toBeInTheDocument();
+});
+
+it("同じ画面の一覧ごとにページパラメータとラベルを分ける", () => {
+  render(<RouterProvider router={createMemoryRouter([{
+    path: "/",
+    element: <Pagination totalItems={30} currentPage={2} paramName="usersPage" ariaLabel="ユーザー管理のページ送り" />,
+  }], { initialEntries: ["/?postsPage=3"] })} />);
+  const navigation = screen.getByRole("navigation", { name: "ユーザー管理のページ送り" });
+  const next = within(navigation).getByRole("link", { name: "次のページ" });
+  const params = new URLSearchParams(next.getAttribute("href")!.slice(1));
+  expect(params.get("usersPage")).toBe("3");
+  expect(params.get("postsPage")).toBe("3");
 });

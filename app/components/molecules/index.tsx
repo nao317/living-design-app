@@ -1,4 +1,4 @@
-import { Building2, Heart, MapPin, Search } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, Heart, MapPin, Search } from "lucide-react";
 import { Form, Link, useFetcher, useLocation, useSearchParams } from "react-router";
 import { cloneElement, isValidElement, useId, type ReactNode, type ReactElement, type InputHTMLAttributes } from "react";
 import { Button } from "../atoms";
@@ -7,6 +7,8 @@ import { useFavorites } from "../../features/favorites/favorites-context";
 import { useFieldErrors } from "../../features/forms/managed-form";
 import type { clientAction as favoriteAction } from "../../routes/favorite-update";
 import { StorageImage } from "../../features/media/storage-image";
+
+const pageNumberFormatter = new Intl.NumberFormat("ja-JP");
 
 export function SearchBar({ defaultValue = "" }: { defaultValue?: string }) {
   return (
@@ -142,28 +144,27 @@ export function CaseListItem({ item }: { item: CaseStudy }) {
   );
 }
 
-export function Pagination({ totalItems, currentPage = 1, pageSize = 10 }: { totalItems: number; currentPage?: number; pageSize?: number }) {
+export function Pagination({ totalItems, currentPage = 1, pageSize = 10, paramName = "page", ariaLabel = "ページ送り" }: { totalItems: number; currentPage?: number; pageSize?: number; paramName?: string; ariaLabel?: string }) {
   const [searchParams] = useSearchParams();
   const totalPages = Math.ceil(totalItems / pageSize);
   if (totalPages <= 1) return null;
-  const pages = [...new Set([1, currentPage - 1, currentPage, currentPage + 1, totalPages])].filter((page) => page >= 1 && page <= totalPages).sort((a, b) => a - b);
+  const formattedCurrentPage = pageNumberFormatter.format(currentPage);
+  const formattedTotalPages = pageNumberFormatter.format(totalPages);
 
   function getPageUrl(page: number) {
     const params = new URLSearchParams(searchParams);
-    params.set("page", String(page));
+    params.set(paramName, String(page));
     return `?${params.toString()}`;
   }
 
   return (
-    <nav className="pagination" aria-label="ページ送り">
-      {currentPage > 1 ? <Link to={getPageUrl(currentPage - 1)} aria-label="前のページ">‹</Link> : <span aria-hidden="true">‹</span>}
-      {pages.flatMap((page, index) => [
-        ...(index > 0 && page - pages[index - 1] > 1 ? [<span key={`gap-${page}`} className="pagination-gap" aria-hidden="true">…</span>] : []),
-        page === currentPage
-          ? <span key={page} className="is-current" aria-current="page" aria-label={`${page}ページ（現在）`}>{page}</span>
-          : <Link key={page} to={getPageUrl(page)} aria-label={`${page}ページへ`}>{page}</Link>,
-      ])}
-      {currentPage < totalPages ? <Link to={getPageUrl(currentPage + 1)} aria-label="次のページ">›</Link> : <span aria-hidden="true">›</span>}
+    <nav className="pagination" aria-label={ariaLabel}>
+      {currentPage > 1 ? <Link className="pagination__link pagination__link--previous" to={getPageUrl(currentPage - 1)}><ChevronLeft size={20} aria-hidden="true" />前のページ</Link> : null}
+      <span className="pagination__counter" aria-current="page">
+        <span className="sr-only">{formattedCurrentPage}ページ、全{formattedTotalPages}ページ</span>
+        <span aria-hidden="true">{formattedCurrentPage} / {formattedTotalPages}</span>
+      </span>
+      {currentPage < totalPages ? <Link className="pagination__link pagination__link--next" to={getPageUrl(currentPage + 1)}>次のページ<ChevronRight size={20} aria-hidden="true" /></Link> : null}
     </nav>
   );
 }

@@ -15,6 +15,8 @@
   --surface: #ffffff;
   --surface-soft: #f7f9f7;
   --shadow: 0 8px 26px rgb(26 52 34 / 10%);
+  --focus-yellow: #ffd43d;
+  --focus-black: #000000;
 }
 
 *,
@@ -36,8 +38,9 @@ body {
 html { scroll-padding-top: 80px; }
 button, a, input, select, textarea { touch-action: manipulation; -webkit-tap-highlight-color: rgb(23 111 220 / 18%); }
 :is(a, button, input, select, textarea, summary):focus-visible {
-  outline: 3px solid var(--blue-600);
-  outline-offset: 3px;
+  outline: 2px solid var(--focus-black);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 4px var(--focus-yellow);
 }
 :is(h1, h2, h3, p, dd, .field, .case-card) { overflow-wrap: anywhere; }
 :is(h1, h2, h3) { scroll-margin-top: 80px; text-wrap: balance; }
@@ -359,8 +362,12 @@ button[aria-busy="true"] { cursor: wait; }
   font-size: 16px;
 }
 
-.search-bar:focus-within { border-color: var(--blue-600); box-shadow: 0 0 0 2px var(--blue-600); }
-.search-bar input:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 1px; }
+.search-bar:focus-within {
+  outline: 2px solid var(--focus-black);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 4px var(--focus-yellow);
+}
+.search-bar input:focus-visible { outline: 2px solid transparent; outline-offset: 1px; box-shadow: none; }
 
 .search-bar .button {
   min-width: 94px;
@@ -567,49 +574,52 @@ button[aria-busy="true"] { cursor: wait; }
 }
 
 .pagination {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 5px;
-  margin-top: 24px;
-}
-
-.pagination a,
-.pagination span {
   display: grid;
-  min-width: 44px;
-  padding-inline: 4px;
-  height: 44px;
-  place-items: center;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  color: #667067;
-  font-size: 13px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: clamp(8px, 3vw, 20px);
+  width: min(100%, 480px);
+  align-items: center;
+  margin: 24px auto 0;
+}
+
+.pagination__link {
+  display: inline-flex;
+  width: max-content;
+  min-height: 44px;
+  align-items: center;
+  gap: 2px;
+  color: var(--blue-600);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  white-space: nowrap;
+}
+
+.pagination__link:hover {
+  color: #0d4f9f;
+  text-decoration-thickness: 2px;
+}
+
+.pagination__link--previous {
+  grid-column: 1;
+  justify-self: start;
+}
+
+.pagination__link--next {
+  grid-column: 3;
+  justify-self: end;
+}
+
+.pagination__counter {
+  grid-column: 2;
+  color: #4f5c53;
+  font-size: 16px;
   font-variant-numeric: tabular-nums;
-}
-
-.pagination a:hover {
-  border-color: var(--green-900);
-}
-
-.pagination span[aria-hidden="true"] {
-  color: #a8b1aa;
-}
-
-.pagination button {
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: #fff;
-  color: #667067;
-  font-size: 11px;
-}
-
-.pagination .is-current {
-  border-color: var(--green-900);
-  background: var(--green-900);
-  color: #fff;
+  line-height: 1.5;
+  text-align: center;
 }
 
 .companies-page {
@@ -1390,7 +1400,11 @@ button[aria-busy="true"] { cursor: wait; }
   opacity: 0;
 }
 
-.media-upload:focus-within, .case-photo-add:focus-within { outline: 3px solid var(--blue-600); outline-offset: 3px; }
+.media-upload:focus-within, .case-photo-add:focus-within {
+  outline: 2px solid var(--focus-black);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 4px var(--focus-yellow);
+}
 
 .media-remove {
   display: inline-flex;
@@ -1547,7 +1561,7 @@ button[aria-busy="true"] { cursor: wait; }
   gap: 9px;
 }
 
-.company-works a {
+.company-works > a {
   display: grid;
   grid-template-columns: 85px 1fr;
   gap: 10px;
@@ -1827,6 +1841,7 @@ button[aria-busy="true"] { cursor: wait; }
 .case-gallery figcaption span { color: var(--muted); }
 .photo-button { display: block; width: 100%; overflow: hidden; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-soft); padding: 0; }
 .photo-button:hover { box-shadow: var(--shadow); }
+.photo-button:focus-visible { box-shadow: 0 0 0 4px var(--focus-yellow); }
 .photo-button img { width: 100%; height: 260px; object-fit: cover; }
 .photo-dialog { width: min(1100px, calc(100% - 24px)); max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; border: 0; border-radius: 8px; background: #fff; padding: 16px; }
 .photo-dialog::backdrop { background: rgb(0 0 0 / 75%); }
