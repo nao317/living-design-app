@@ -9,7 +9,7 @@ import { hasInvalidPriceRange, parseSearchParams } from "../features/search/sche
 import { fetchSearchOptions, searchPublishedCases, type SearchOption } from "../features/cases/public-data.client";
 import type { CaseStudy } from "../features/cases/types";
 
-const pageSize = 10;
+const pageSize = 6;
 
 export function meta() {
   return [{ title: "検索結果 | 飯塚のリノベ" }];
