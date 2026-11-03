@@ -57,7 +57,7 @@ export default function CompaniesRoute({ loaderData }: Route.ComponentProps) {
                 </article>
               ))}
             </div>
-            <Pagination totalItems={loaderData.total} currentPage={loaderData.page} pageSize={pageSize} />
+            <Pagination totalItems={loaderData.total} currentPage={loaderData.page} pageSize={pageSize} showSinglePage />
           </>
         ) : (
           <div className="empty-state">{loaderData.query ? <><h2>条件に合う企業がありません</h2><p>別のキーワードで検索するか、<Link to="/companies">条件をクリア</Link>してください。</p></> : <><h2>登録されている企業がありません</h2><p>公開企業が登録されると、ここに表示されます。</p></>}</div>

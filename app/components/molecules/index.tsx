@@ -144,10 +144,10 @@ export function CaseListItem({ item }: { item: CaseStudy }) {
   );
 }
 
-export function Pagination({ totalItems, currentPage = 1, pageSize = 10, paramName = "page", ariaLabel = "ページ送り" }: { totalItems: number; currentPage?: number; pageSize?: number; paramName?: string; ariaLabel?: string }) {
+export function Pagination({ totalItems, currentPage = 1, pageSize = 10, paramName = "page", ariaLabel = "ページ送り", showSinglePage = false }: { totalItems: number; currentPage?: number; pageSize?: number; paramName?: string; ariaLabel?: string; showSinglePage?: boolean }) {
   const [searchParams] = useSearchParams();
   const totalPages = Math.ceil(totalItems / pageSize);
-  if (totalPages <= 1) return null;
+  if (totalItems === 0 || (totalPages === 1 && !showSinglePage)) return null;
   const formattedCurrentPage = pageNumberFormatter.format(currentPage);
   const formattedTotalPages = pageNumberFormatter.format(totalPages);
 

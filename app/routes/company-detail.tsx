@@ -50,7 +50,7 @@ export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps)
         <div className="company-detail-body">
           <section className="company-works">
             <h2>施工事例</h2>
-            {loaderData.cases.length ? <>{loaderData.cases.map((item) => <Link key={item.id} to={"/cases/" + item.id}><StorageImage width={85} height={60} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /><span>{item.title}</span></Link>)}<Pagination totalItems={loaderData.casesTotal} currentPage={loaderData.casesPage} pageSize={pageSize} /></> : <p>公開中の施工事例はまだありません。</p>}
+            {loaderData.cases.length ? <>{loaderData.cases.map((item) => <Link key={item.id} to={"/cases/" + item.id}><StorageImage width={85} height={60} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /><span>{item.title}</span></Link>)}<Pagination totalItems={loaderData.casesTotal} currentPage={loaderData.casesPage} pageSize={pageSize} showSinglePage /></> : <p>公開中の施工事例はまだありません。</p>}
           </section>
           <section className="company-information">
             <h2>会社情報</h2>

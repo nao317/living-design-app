@@ -69,6 +69,17 @@ it("移動先がない前後リンクは非活性表示せず非表示にする"
   expect(screen.queryByRole("link", { name: "次のページ" })).not.toBeInTheDocument();
 });
 
+it("指定された一覧では1ページだけでも現在位置を表示する", () => {
+  render(<RouterProvider router={createMemoryRouter([{
+    path: "/",
+    element: <Pagination totalItems={6} pageSize={10} showSinglePage />,
+  }])} />);
+  expect(screen.getByRole("navigation", { name: "ページ送り" })).toBeInTheDocument();
+  expect(screen.getByText("1ページ、全1ページ")).toHaveClass("sr-only");
+  expect(screen.queryByRole("link", { name: "前のページ" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "次のページ" })).not.toBeInTheDocument();
+});
+
 it("同じ画面の一覧ごとにページパラメータとラベルを分ける", () => {
   render(<RouterProvider router={createMemoryRouter([{
     path: "/",
