@@ -4,6 +4,7 @@ import type { CaseStudy, CompanyContactOption, CompanyMember, CompanyProfile, Co
 import type { SearchParams } from "../search/schema";
 import { filterSearchRecords, type SearchRecord } from "../search/filter";
 import { formatPriceRange } from "./format";
+import { loadPage } from "../pagination/pagination";
 
 type CaseRow = {
   id: string;
@@ -308,7 +309,7 @@ export async function fetchCaseById(caseId: string) {
   return cases[0] ?? null;
 }
 
-export async function fetchCompanyById(companyId: string) {
+export async function fetchCompanyById(companyId: string, page = 1, pageSize = 6) {
   if (!isSupabaseConfigured() || !uuidPattern.test(companyId)) return null;
   const supabase = getSupabaseBrowserClient();
   const [companyResult, casesResult] = await Promise.all([
@@ -317,23 +318,21 @@ export async function fetchCompanyById(companyId: string) {
       .eq("id", companyId)
       .neq("status", "SUSPENDED")
       .maybeSingle(),
-    supabase.from("construction_cases")
-      .select("id, company_id, title, summary, area, price_min, price_max, construction_period")
+    loadPage<CaseRow>(page, pageSize, (from, to) => supabase.from("construction_cases")
+      .select("id, company_id, title, summary, area, price_min, price_max, construction_period", { count: "exact" })
       .eq("company_id", companyId)
       .eq("status", "PUBLISHED")
-      .order("published_at", { ascending: false }),
+      .order("published_at", { ascending: false })
+      .range(from, to)),
   ]);
   const { data, error } = companyResult;
   if (error) throw error;
   if (!data) return null;
   const company = data as CompanyRow;
-  const { data: caseRows, error: casesError } = casesResult;
-  if (casesError) throw casesError;
-
   const companyImagePath = company.cover_image_path ?? company.logo_path;
   const [companyImage, cases] = await Promise.all([
     getSignedImageUrl("company-assets", companyImagePath, "detail"),
-    fetchCasesByRows((caseRows ?? []) as CaseRow[]),
+    fetchCasesByRows(casesResult.items),
   ]);
   return {
     company: {
@@ -347,31 +346,45 @@ export async function fetchCompanyById(companyId: string) {
       features: [],
     },
     cases,
+    casesTotal: casesResult.total,
+    casesPage: casesResult.page,
   };
 }
 
-export async function fetchPublishedCompanies(): Promise<CompanySummary[]> {
-  if (!isSupabaseConfigured()) return [];
+function quotePostgrestValue(value: string) {
+  return `"${value.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
+}
+
+export async function fetchPublishedCompanies(query: string, page: number, pageSize: number) {
+  if (!isSupabaseConfigured()) return { items: [] as CompanySummary[], total: 0, page: 1 };
   const supabase = getSupabaseBrowserClient();
-  const { data, error } = await supabase.from("companies")
-    .select("id, name, address, description, logo_path, cover_image_path")
-    .neq("status", "SUSPENDED")
-    .order("name");
-  if (error) throw error;
-  return (data ?? []).map((company) => ({
-    id: company.id,
-    name: company.name,
-    address: company.address,
-    description: company.description,
-    image: "",
-    imagePath: company.cover_image_path ?? company.logo_path ?? undefined,
-  }));
+  const result = await loadPage(page, pageSize, (from, to) => {
+    let request = supabase.from("companies")
+      .select("id, name, address, description, logo_path, cover_image_path", { count: "exact" })
+      .neq("status", "SUSPENDED");
+    if (query) {
+      const pattern = quotePostgrestValue(`*${query}*`);
+      request = request.or(`name.ilike.${pattern},address.ilike.${pattern},description.ilike.${pattern}`);
+    }
+    return request.order("name").range(from, to);
+  });
+  return {
+    ...result,
+    items: result.items.map((company) => ({
+      id: company.id,
+      name: company.name,
+      address: company.address,
+      description: company.description,
+      image: "",
+      imagePath: company.cover_image_path ?? company.logo_path ?? undefined,
+    })),
+  };
 }
 
 export async function fetchFavoriteCases(limit?: number) {
   if (!isSupabaseConfigured()) return [];
   const supabase = getSupabaseBrowserClient();
-  let favoritesQuery = supabase.from("favorites").select("case_id");
+  let favoritesQuery = supabase.from("favorites").select("case_id").order("created_at", { ascending: false });
   if (limit !== undefined) favoritesQuery = favoritesQuery.limit(limit);
   const { data, error } = await favoritesQuery;
   if (error) throw error;
@@ -385,22 +398,54 @@ export async function fetchFavoriteCases(limit?: number) {
   return fetchCasesByRows((rows ?? []) as CaseRow[]);
 }
 
-export async function fetchManagedCompany(companyId: string) {
+export async function fetchFavoriteCasesPage(page: number, pageSize: number) {
+  if (!isSupabaseConfigured()) return { items: [] as CaseStudy[], total: 0, page: 1 };
+  const supabase = getSupabaseBrowserClient();
+  const favorites = await loadPage<{ case_id: string; construction_cases: Array<{ status: string }> }>(page, pageSize, (from, to) => supabase.from("favorites")
+    .select("case_id, construction_cases!inner(status)", { count: "exact" })
+    .eq("construction_cases.status", "PUBLISHED")
+    .order("created_at", { ascending: false })
+    .range(from, to));
+  const ids = favorites.items.map((favorite) => favorite.case_id);
+  if (!ids.length) return { total: favorites.total, page: favorites.page, items: [] as CaseStudy[] };
+  const { data: rows, error } = await supabase.from("construction_cases")
+    .select("id, company_id, title, summary, area, price_min, price_max, construction_period")
+    .in("id", ids)
+    .eq("status", "PUBLISHED");
+  if (error) throw error;
+  const rowById = new Map(((rows ?? []) as CaseRow[]).map((row) => [row.id, row]));
+  const orderedRows = ids.map((id) => rowById.get(id)).filter((row): row is CaseRow => Boolean(row));
+  return { total: favorites.total, page: favorites.page, items: await fetchCasesByRows(orderedRows) };
+}
+
+export async function fetchManagedCompany(companyId: string, pagination: {
+  casesPage: number;
+  messagesPage: number;
+  membersPage: number;
+  casesPageSize: number;
+  messagesPageSize: number;
+  membersPageSize: number;
+}) {
   if (!isSupabaseConfigured()) return null;
   const supabase = getSupabaseBrowserClient();
-  const [{ data: company, error: companyError }, { data: caseRows, error: casesError }, { data: memberRows, error: membersError }, { data: messageRows, error: messagesError }] = await Promise.all([
+  const [companyResult, casesResult, membersResult, messagesResult, unreadResult] = await Promise.all([
     supabase.from("companies").select("id, name, email, address, phone, founded_year, business_hours, website_url, description, logo_path, cover_image_path").eq("id", companyId).maybeSingle(),
-    supabase.from("construction_cases").select("id, company_id, title, summary, area, price_min, price_max, construction_period, status").eq("company_id", companyId).order("updated_at", { ascending: false }),
-    supabase.from("company_members").select("user_id, role").eq("company_id", companyId),
-    supabase.from("contact_messages").select("id, company_id, sender_name, sender_email, subject, message, case_id, status, created_at, read_at").eq("company_id", companyId).order("created_at", { ascending: false }),
+    loadPage<CaseRow>(pagination.casesPage, pagination.casesPageSize, (from, to) => supabase.from("construction_cases")
+      .select("id, company_id, title, summary, area, price_min, price_max, construction_period, status", { count: "exact" })
+      .eq("company_id", companyId).order("updated_at", { ascending: false }).range(from, to)),
+    loadPage<{ user_id: string; role: string }>(pagination.membersPage, pagination.membersPageSize, (from, to) => supabase.from("company_members")
+      .select("user_id, role", { count: "exact" }).eq("company_id", companyId).range(from, to)),
+    loadPage<ContactMessageRow>(pagination.messagesPage, pagination.messagesPageSize, (from, to) => supabase.from("contact_messages")
+      .select("id, company_id, sender_name, sender_email, subject, message, case_id, status, created_at, read_at", { count: "exact" })
+      .eq("company_id", companyId).order("created_at", { ascending: false }).range(from, to)),
+    supabase.from("contact_messages").select("id", { count: "exact", head: true }).eq("company_id", companyId).eq("status", "NEW"),
   ]);
+  const { data: company, error: companyError } = companyResult;
   if (companyError) throw companyError;
-  if (casesError) throw casesError;
-  if (membersError) throw membersError;
-  if (messagesError) throw messagesError;
+  if (unreadResult.error) throw unreadResult.error;
   if (!company) return null;
 
-  const members = (memberRows ?? []) as Array<{ user_id: string; role: string }>;
+  const members = membersResult.items;
   const userIds = members.map((member) => member.user_id);
   const { data: profiles, error: profilesError } = userIds.length
     ? await supabase.from("profiles").select("id, display_name").in("id", userIds)
@@ -425,7 +470,7 @@ export async function fetchManagedCompany(companyId: string) {
     email: "",
   }));
 
-  const managedRows = (caseRows ?? []) as CaseRow[];
+  const managedRows = casesResult.items;
   const caseImagePaths = new Map<string, string>();
   if (managedRows.length) {
     const { data: imageRows, error: imageError } = await supabase.from("case_images")
@@ -445,8 +490,12 @@ export async function fetchManagedCompany(companyId: string) {
       const item = toCaseStudy(row, companyRow, { companyImage: profile.image || undefined, companyImagePath: profile.imagePath });
       return { ...item, image: caseImageUrls.get(row.id) ?? item.image, imagePath: caseImagePaths.get(row.id) };
     }),
+    casesTotal: casesResult.total,
+    casesPage: casesResult.page,
     members: memberList,
-    messages: ((messageRows ?? []) as ContactMessageRow[]).map((message) => ({
+    membersTotal: membersResult.total,
+    membersPage: membersResult.page,
+    messages: messagesResult.items.map((message) => ({
       id: message.id,
       companyId: message.company_id,
       senderName: message.sender_name,
@@ -458,6 +507,9 @@ export async function fetchManagedCompany(companyId: string) {
       createdAt: message.created_at,
       readAt: message.read_at ?? undefined,
     } satisfies ContactMessage)),
+    messagesTotal: messagesResult.total,
+    messagesPage: messagesResult.page,
+    unreadMessages: unreadResult.count ?? 0,
   };
 }
 

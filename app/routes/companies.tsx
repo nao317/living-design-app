@@ -6,31 +6,26 @@ import { PublicRouteFallback } from "../components/templates/public-route-fallba
 import { fetchPublishedCompanies } from "../features/cases/public-data.client";
 import type { CompanySummary } from "../features/cases/types";
 import { StorageImage } from "../features/media/storage-image";
+import { parsePage } from "../features/pagination/pagination";
 
 const pageSize = 12;
 
 export function meta() { return [{ title: "企業を探す | 飯塚のリノベ" }]; }
 
 export function loader({ request }: Route.LoaderArgs) {
-  return { items: [] as CompanySummary[], total: 0, page: 1, query: new URL(request.url).searchParams.get("q")?.trim() ?? "" };
+  return { items: [] as CompanySummary[], total: 0, page: 1, query: new URL(request.url).searchParams.get("q")?.trim().slice(0, 100) ?? "" };
 }
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
-  const [companies, serverData] = await Promise.all([fetchPublishedCompanies(), serverLoader()]);
   const params = new URL(request.url).searchParams;
-  const query = params.get("q")?.trim() ?? "";
-  const filtered = query
-    ? companies.filter((company) => [company.name, company.address, company.description].join(" ").includes(query))
-    : companies;
-  const requestedPage = Number(params.get("page") ?? "1");
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const page = Number.isInteger(requestedPage) && requestedPage > 0 ? Math.min(requestedPage, totalPages) : 1;
-  const visible = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const query = params.get("q")?.trim().slice(0, 100) ?? "";
+  const [companies, serverData] = await Promise.all([
+    fetchPublishedCompanies(query, parsePage(params), pageSize),
+    serverLoader(),
+  ]);
   return {
     ...serverData,
-    items: visible,
-    total: filtered.length,
-    page,
+    ...companies,
     query,
   };
 }

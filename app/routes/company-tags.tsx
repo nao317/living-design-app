@@ -1,13 +1,16 @@
 import type { Route } from "./+types/company-tags";
 import { data } from "react-router";
 import { z } from "zod";
-import { Field } from "../components/molecules";
+import { Field, Pagination } from "../components/molecules";
 import { DashboardLayout } from "../components/templates/dashboard-layout";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { kindLabel, operationLabel, statusLabel, type TaxonomyOption, type TaxonomyRequest } from "../features/taxonomy/types";
 import { getSupabaseBrowserClient } from "../lib/supabase.client";
 import { InlineActionForm, PendingActionButton } from "../features/forms/inline-action-form";
+import { loadPage, parsePage } from "../features/pagination/pagination";
+
+const pageSize = 10;
 
 const requestSchema = z.object({
   kind: z.enum(["CATEGORY", "STYLE"]),
@@ -18,21 +21,24 @@ const requestSchema = z.object({
 });
 
 export function loader() {
-  return { categories: [] as TaxonomyOption[], styles: [] as TaxonomyOption[], requests: [] as TaxonomyRequest[] };
+  return { categories: [] as TaxonomyOption[], styles: [] as TaxonomyOption[], requests: [] as TaxonomyRequest[], requestsTotal: 0, requestsPage: 1 };
 }
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
   const context = await requireAuthorization(request, { role: "COMPANY" });
   const companyId = context.memberships[0].companyId;
   const supabase = getSupabaseBrowserClient();
-  const [categories, styles, requests] = await Promise.all([
+  const params = new URL(request.url).searchParams;
+  const [categories, styles, requests, serverData] = await Promise.all([
     supabase.from("categories").select("id, name").eq("is_active", true).order("display_order"),
     supabase.from("styles").select("id, name").eq("is_active", true).order("display_order"),
-    supabase.from("taxonomy_requests").select("id, company_id, requested_by, kind, operation, target_id, proposed_name, reason, status, review_reason, created_at, reviewed_at")
-      .eq("company_id", companyId).order("created_at", { ascending: false }),
+    loadPage<TaxonomyRequest>(parsePage(params), pageSize, (from, to) => supabase.from("taxonomy_requests")
+      .select("id, company_id, requested_by, kind, operation, target_id, proposed_name, reason, status, review_reason, created_at, reviewed_at", { count: "exact" })
+      .eq("company_id", companyId).order("created_at", { ascending: false }).range(from, to)),
+    serverLoader(),
   ]);
-  for (const result of [categories, styles, requests]) if (result.error) throw result.error;
-  return { ...(await serverLoader()), categories: categories.data ?? [], styles: styles.data ?? [], requests: (requests.data ?? []) as TaxonomyRequest[] };
+  for (const result of [categories, styles]) if (result.error) throw result.error;
+  return { ...serverData, categories: categories.data ?? [], styles: styles.data ?? [], requests: requests.items, requestsTotal: requests.total, requestsPage: requests.page };
 }
 
 clientLoader.hydrate = true as const;
@@ -103,6 +109,7 @@ export default function CompanyTagsRoute({ loaderData, actionData }: Route.Compo
         {item.review_reason ? <span>審査理由：{item.review_reason}</span> : null}
         {item.status === "PENDING" ? <InlineActionForm confirmMessage="この申請を取り下げますか？">{({ pending }) => <><input type="hidden" name="intent" value="withdraw" /><input type="hidden" name="requestId" value={item.id} /><PendingActionButton pending={pending} pendingLabel="取り下げ中…" variant="secondary">取り下げる</PendingActionButton></>}</InlineActionForm> : null}
       </div>)}</div>}
+      <Pagination totalItems={loaderData.requestsTotal} currentPage={loaderData.requestsPage} pageSize={pageSize} />
     </section>
   </DashboardLayout>;
 }

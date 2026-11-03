@@ -1,7 +1,7 @@
 import { data, Link } from "react-router";
 import { z } from "zod";
 import { Avatar } from "../components/atoms";
-import { CaseCard } from "../components/molecules";
+import { CaseCard, Pagination } from "../components/molecules";
 import { DashboardLayout } from "../components/templates/dashboard-layout";
 import type { Route } from "./+types/company-dashboard";
 import { getAuthorizationContext, requireAuthorization } from "../features/auth/authorization.client";
@@ -12,16 +12,34 @@ import { fetchManagedCompany } from "../features/cases/public-data.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 import type { CaseStudy, CompanyMember, CompanyProfile, ContactMessage } from "../features/cases/types";
 import { InlineActionForm, PendingActionButton } from "../features/forms/inline-action-form";
+import { parsePage } from "../features/pagination/pagination";
+
+const casesPageSize = 6;
+const messagesPageSize = 10;
+const membersPageSize = 10;
 
 export function loader() {
-  return { company: null as CompanyProfile | null, cases: [] as CaseStudy[], members: [] as CompanyMember[], messages: [] as ContactMessage[] };
+  return {
+    company: null as CompanyProfile | null,
+    cases: [] as CaseStudy[], casesTotal: 0, casesPage: 1,
+    members: [] as CompanyMember[], membersTotal: 0, membersPage: 1,
+    messages: [] as ContactMessage[], messagesTotal: 0, messagesPage: 1, unreadMessages: 0,
+  };
 }
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
   await requireAuthorization(request, { role: "COMPANY" });
   const context = await getAuthorizationContext();
   const companyId = context?.memberships[0]?.companyId;
-  const managed = companyId ? await fetchManagedCompany(companyId) : null;
+  const params = new URL(request.url).searchParams;
+  const managed = companyId ? await fetchManagedCompany(companyId, {
+    casesPage: parsePage(params, "casesPage"),
+    messagesPage: parsePage(params, "messagesPage"),
+    membersPage: parsePage(params, "membersPage"),
+    casesPageSize,
+    messagesPageSize,
+    membersPageSize,
+  }) : null;
   return { ...(await serverLoader()), ...(managed ?? {}) };
 }
 
@@ -103,10 +121,11 @@ export default function CompanyDashboardRoute({ loaderData, actionData }: Route.
             </div>
           </div>)}
         </div> : <div className="empty-state"><p>施工事例はまだありません。</p></div>}
+        <Pagination totalItems={loaderData.casesTotal} currentPage={loaderData.casesPage} pageSize={casesPageSize} paramName="casesPage" ariaLabel="施工事例のページ送り" />
       </section>
       <section className="dashboard-section">
         <div className="section-header">
-          <h2>お問い合わせ{loaderData.messages.some((message) => message.status === "NEW") ? `（未読 ${loaderData.messages.filter((message) => message.status === "NEW").length}件）` : ""}</h2>
+          <h2>お問い合わせ{loaderData.unreadMessages ? `（未読 ${loaderData.unreadMessages}件）` : ""}</h2>
         </div>
         {loaderData.messages.length ? (
           <div className="contact-message-list">
@@ -133,6 +152,7 @@ export default function CompanyDashboardRoute({ loaderData, actionData }: Route.
             ))}
           </div>
         ) : <div className="empty-state"><p>お問い合わせはまだありません。</p></div>}
+        <Pagination totalItems={loaderData.messagesTotal} currentPage={loaderData.messagesPage} pageSize={messagesPageSize} paramName="messagesPage" ariaLabel="お問い合わせのページ送り" />
       </section>
       <section className="dashboard-section">
         <div className="section-header"><h2>所属ユーザー</h2></div>
@@ -142,6 +162,7 @@ export default function CompanyDashboardRoute({ loaderData, actionData }: Route.
           ))}
           {loaderData.members.length === 0 ? <p>所属ユーザーはいません。</p> : null}
         </div>
+        <Pagination totalItems={loaderData.membersTotal} currentPage={loaderData.membersPage} pageSize={membersPageSize} paramName="membersPage" ariaLabel="所属ユーザーのページ送り" />
       </section>
     </DashboardLayout>
   );
