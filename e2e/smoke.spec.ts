@@ -90,7 +90,7 @@ for (const viewport of [
   });
 }
 
-test("スマホではブランドが左、メニューが右にあり、メニューを開ける", async ({ page }) => {
+test("スマホではメニューが画面左からスライドインする", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/", { waitUntil: "domcontentloaded" });
 
@@ -104,9 +104,12 @@ test("スマホではブランドが左、メニューが右にあり、メニ�
   expect(brandBox!.x).toBeLessThan(menuBox!.x);
   await expect(brand).toContainText("飯塚のリノベ");
 
+  const closedOffset = await page.locator("#site-navigation").evaluate((element) => new DOMMatrix(getComputedStyle(element).transform).m41);
+  expect(closedOffset).toBeLessThan(0);
   await menuButton.click();
   const mainMenu = page.getByRole("navigation", { name: "メインメニュー" });
   await expect(mainMenu).toBeVisible();
+  await expect.poll(async () => (await mainMenu.boundingBox())?.x).toBe(0);
   await expect(mainMenu.getByRole("link", { name: "施工事例を探す" })).toBeVisible();
   await expect(page.getByRole("button", { name: "メニューを閉じる" })).toHaveAttribute("aria-expanded", "true");
 });
