@@ -131,7 +131,7 @@ export function CaseListItem({ item }: { item: CaseStudy }) {
   return (
     <article className={ui["case-list-item"]}>
       <Link to={detailUrl} className={ui["case-list-item__image"]}>
-        {item.image ? <StorageImage width={190} height={112} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /> : <span className={ui["image-empty"]}>写真の掲載なし</span>}
+        {item.image ? <StorageImage width={800} height={600} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /> : <span className={ui["image-empty"]}>写真の掲載なし</span>}
       </Link>
       <div className={ui["case-list-item__body"]}>
         <h2><Link to={detailUrl}>{item.title}</Link></h2>

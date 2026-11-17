@@ -9,7 +9,9 @@ import { DashboardLayout } from "../components/templates/dashboard-layout";
 import { requireAuthorization, getAuthorizationContext } from "../features/auth/authorization.client";
 import { getActiveCompanyId } from "../features/auth/company-selection.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
-import { isImageFile, MAX_CASE_IMAGES, MAX_IMAGE_BYTES, removeImages, uploadImage, validateCaseImageCount } from "../features/media/image-storage.client";
+import { CaseImageEditor } from "../features/media/case-image-editor";
+import { readCaseImageChanges, validateCaseImageChanges } from "../features/media/case-image-form";
+import { saveCaseImages } from "../features/media/save-case-images.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 
 const caseSchema = z.object({
@@ -58,9 +60,9 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   if (!result.success) return data({ error: "入力内容を確認してください。", fieldErrors: validationErrors(result.error) }, { status: 400 });
   const fieldErrors = priceErrors(result.data.priceMin, result.data.priceMax);
   if (Object.keys(fieldErrors).length) return data({ error: "費用の下限と上限を確認してください。", fieldErrors }, { status: 400 });
-  const files = formData.getAll("images").filter(isImageFile);
-  const imageCountError = validateCaseImageCount(0, files.length);
-  if (imageCountError) return data({ error: imageCountError }, { status: 400 });
+  const imageInput = readCaseImageChanges(formData);
+  const imageError = imageInput.error ?? validateCaseImageChanges([], imageInput.changes);
+  if (imageError) return data({ error: imageError }, { status: 400 });
 
   let savedCaseId: string | undefined;
   if (isSupabaseConfigured()) {
@@ -100,27 +102,10 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
       }
     }
 
-    const uploadedPaths: string[] = [];
-    for (const file of files) {
-      const uploaded = await uploadImage("case-images", `${companyId}/${createdCaseId}`, file, MAX_IMAGE_BYTES);
-      if (uploaded.error || !uploaded.path) {
-        await removeImages("case-images", uploadedPaths);
-        await supabase.from("construction_cases").delete().eq("id", createdCaseId);
-        return data({ error: `施工事例の画像をアップロードできませんでした。${uploaded.error ?? ""}` }, { status: 400 });
-      }
-      uploadedPaths.push(uploaded.path);
-    }
-    if (uploadedPaths.length) {
-      const { error: imageError } = await supabase.from("case_images").insert(uploadedPaths.map((storagePath, index) => ({
-        case_id: createdCaseId,
-        storage_path: storagePath,
-        display_order: index,
-      })));
-      if (imageError) {
-        await removeImages("case-images", uploadedPaths);
-        await supabase.from("construction_cases").delete().eq("id", createdCaseId);
-        return data({ error: `施工事例の画像を保存できませんでした。${imageError.message}` }, { status: imageError.code === "42501" ? 403 : 400 });
-      }
+    const imageSaveError = await saveCaseImages(createdCaseId, companyId, [], imageInput.changes);
+    if (imageSaveError) {
+      await supabase.from("construction_cases").delete().eq("id", createdCaseId);
+      return data({ error: imageSaveError }, { status: 400 });
     }
     if (formData.get("publish") === "on") {
       const { data: publishedCase, error: publishError } = await supabase.from("construction_cases")
@@ -141,6 +126,7 @@ export default function CompanyCaseNewRoute({ loaderData, actionData }: Route.Co
       {actionData && "error" in actionData ? <p className={ui["form-error"]} role="alert">{actionData.error}</p> : null}
       {actionData && "caseId" in actionData && actionData.caseId ? <p><Link to={`/company/cases/${actionData.caseId}/edit`}>登録した施工事例を編集する</Link></p> : null}
       {!(actionData && "saved" in actionData && actionData.saved) && !(actionData && "caseId" in actionData && actionData.caseId) ? <ManagedForm protect method="post" encType="multipart/form-data" className={ui["edit-form"]}>
+        <CaseImageEditor />
         <section className={ui["form-card"]}>
           <div className={ui["form-grid"]}>
             <Field label="タイトル"><input name="title" required maxLength={160} /></Field>
@@ -153,7 +139,7 @@ export default function CompanyCaseNewRoute({ loaderData, actionData }: Route.Co
           <fieldset className={ui["choice-list"]}><legend>リノベーション箇所</legend>{loaderData.categories.map((category) => <label key={category.id}><input type="checkbox" name="categoryIds" value={category.id} />{category.name}</label>)}</fieldset>
           <fieldset className={ui["choice-list"]}><legend>こだわり条件</legend>{loaderData.styles.map((style) => <label key={style.id}><input type="checkbox" name="styleIds" value={style.id} />{style.name}</label>)}</fieldset>
           <label className={ui["choice-list"]}><input type="checkbox" name="publish" />登録後に公開する</label>
-          <Field label="施工写真" hint={`写真は施工前後を区別せず、選択した順に表示します。保存する画像は1枚1MB以内、1事例につき${MAX_CASE_IMAGES}枚まで。`}><input name="images" type="file" accept="image/jpeg,image/png,image/webp" multiple /></Field>
+
           <div className={ui["form-actions"]}><SubmitButton>登録する</SubmitButton></div>
         </section>
       </ManagedForm> : null}

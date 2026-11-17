@@ -47,7 +47,7 @@ export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
           <div>{item.categories.map((category) => <Tag key={category}>{category}</Tag>)}<h1>{item.title}</h1></div>
           <FavoriteButton caseId={item.id} />
         </div>
-        <CaseGallery images={gallery} paths={item.imagesPaths} title={item.title} />
+        <CaseGallery images={gallery} paths={item.imagesPaths} title={item.title} details={item.photoDetails} />
         <div className={ui["case-detail-layout"]}>
           <section className={ui["case-detail-main"]}>
             {item.summary ? <section className={ui["case-description"]}><h2>工事の内容</h2><p>{item.summary}</p></section> : null}
