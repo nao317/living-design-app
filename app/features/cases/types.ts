@@ -16,6 +16,7 @@ export type CaseStudy = {
   summary: string;
   images?: string[];
   imagesPaths?: string[];
+  photoDetails?: Array<{ date?: string; description?: string }>;
   priceMin?: number | null;
   priceMax?: number | null;
   periodMonths?: number | null;

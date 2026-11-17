@@ -39,6 +39,13 @@ Your application will be available at `http://localhost:5173`.
 Database, Email authentication, and Google OAuth setup are documented in [docs/supabase-setup.md](./docs/supabase-setup.md).
 Run [supabase/setup.sql](./supabase/setup.sql) in the Supabase SQL Editor before connecting the app.
 Then run [supabase/search.sql](./supabase/search.sql) to enable filtered case search.
+Run [docs/sql/case-image-timeline.sql](./docs/sql/case-image-timeline.sql) before using per-photo dates and descriptions.
+
+The photo layout E2E tests use local mock responses. Run them with test connection settings:
+
+```bash
+VITE_SUPABASE_URL=http://supabase.test VITE_SUPABASE_PUBLISHABLE_KEY=test-key npm run test:e2e -- e2e/case-photos.spec.ts
+```
 
 ## Building for Production
 

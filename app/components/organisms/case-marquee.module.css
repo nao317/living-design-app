@@ -1,5 +1,19 @@
 .actions { display: flex; align-items: center; gap: 12px; }
 .toggle { display: inline-grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--green-900); }
+.showcase { position: relative; isolation: isolate; }
+.edgeBlur { position: absolute; z-index: 1; inset-block: 6px 12px; width: clamp(32px, 8vw, 96px); pointer-events: none; }
+.left { left: 0; --blur-direction: to right; }
+.right { right: 0; --blur-direction: to left; }
+.edgeBlur > span {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(var(--blur-radius));
+  backdrop-filter: blur(var(--blur-radius));
+  -webkit-mask-image: linear-gradient(var(--blur-direction), #000 var(--fade-start), transparent var(--fade-end));
+  mask-image: linear-gradient(var(--blur-direction), #000 var(--fade-start), transparent var(--fade-end));
+}
+.showcase:has(:focus-visible) .edgeBlur { opacity: 0; }
 .viewport { --card-width: 280px; --card-gap: 22px; --play-state: running; position: relative; min-width: 0; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; padding: 6px 4px 12px; }
 .viewport:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .track { display: flex; gap: var(--card-gap); align-items: stretch; }

@@ -6,6 +6,18 @@ import type { CaseStudy } from "../../features/cases/types";
 import ui from "../../ui.module.css";
 import styles from "./case-marquee.module.css";
 
+const edgeBlurLevels = [0.5, 1, 2, 4, 8, 16];
+
+function MarqueeEdgeBlur({ side }: { side: "left" | "right" }) {
+  return <div className={`${styles.edgeBlur} ${styles[side]}`} aria-hidden="true">
+    {edgeBlurLevels.map((blur, index) => <span key={blur} style={{
+      "--blur-radius": `${blur}px`,
+      "--fade-start": `${(5 - index) * 12}%`,
+      "--fade-end": `${(6 - index) * 16}%`,
+    } as CSSProperties} />)}
+  </div>;
+}
+
 export function CaseMarquee({ items, children }: { items: CaseStudy[]; children?: ReactNode }) {
   const [paused, setPaused] = useState(false);
   const viewport = useRef<HTMLDivElement>(null);
@@ -48,14 +60,18 @@ export function CaseMarquee({ items, children }: { items: CaseStudy[]; children?
         <Link to="/search" aria-label="すべての事例を見る">すべて見る<ArrowRight size={16} aria-hidden="true" /></Link>
       </div>
     </div>
-    {items.length ? <div ref={viewport} className={styles.viewport} data-paused={paused || undefined} tabIndex={0} aria-label="施工事例を横にスクロール" onFocus={event => {
-      if (!event.target.matches(":focus-visible")) return;
-      const card = event.target.closest<HTMLElement>("[data-marquee-card]");
-      if (card) requestAnimationFrame(() => card.scrollIntoView({ block: "nearest", inline: "nearest" }));
-    }}>
-      <div className={styles.track}>
-        {items.map((item, index) => <div key={item.id} className={styles.item} data-marquee-card style={{ "--item-index": index } as CSSProperties}><CaseCard item={item} /></div>)}
+    {items.length ? <div className={styles.showcase}>
+      <div ref={viewport} className={styles.viewport} data-paused={paused || undefined} tabIndex={0} aria-label="施工事例を横にスクロール" onFocus={event => {
+        if (!event.target.matches(":focus-visible")) return;
+        const card = event.target.closest<HTMLElement>("[data-marquee-card]");
+        if (card) requestAnimationFrame(() => card.scrollIntoView({ block: "nearest", inline: "nearest" }));
+      }}>
+        <div className={styles.track}>
+          {items.map((item, index) => <div key={item.id} className={styles.item} data-marquee-card style={{ "--item-index": index } as CSSProperties}><CaseCard item={item} /></div>)}
+        </div>
       </div>
+      <MarqueeEdgeBlur side="left" />
+      <MarqueeEdgeBlur side="right" />
     </div> : children}
   </section>;
 }

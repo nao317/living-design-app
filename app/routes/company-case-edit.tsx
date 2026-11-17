@@ -1,6 +1,5 @@
 import ui from "../ui.module.css";
 import type { Route } from "./+types/company-case-edit";
-import { ImagePlus } from "lucide-react";
 import { data, useLocation } from "react-router";
 import { z } from "zod";
 import { Field } from "../components/molecules";
@@ -11,8 +10,10 @@ import type { CaseStudy } from "../features/cases/types";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { getActiveCompanyId } from "../features/auth/company-selection.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
-import { getSignedImageUrl, isImageFile, MAX_CASE_IMAGES, MAX_IMAGE_BYTES, removeImages, uploadImage, validateCaseImageCount } from "../features/media/image-storage.client";
-import { StorageImage } from "../features/media/storage-image";
+import { getSignedImageUrl } from "../features/media/image-storage.client";
+import { CaseImageEditor, type EditableCaseImage } from "../features/media/case-image-editor";
+import { readCaseImageChanges, validateCaseImageChanges } from "../features/media/case-image-form";
+import { saveCaseImages, type StoredCaseImage } from "../features/media/save-case-images.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 
 const caseSchema = z.object({
@@ -31,7 +32,7 @@ function parsePrice(value: string) {
   return Number.isInteger(price) && price >= 0 && price <= 2_147_483_647 ? price : undefined;
 }
 
-type CaseImageView = { id: string; storagePath: string; url: string };
+type CaseImageView = EditableCaseImage;
 
 export function loader({ params }: Route.LoaderArgs) {
   return {
@@ -54,6 +55,8 @@ export async function clientAction({ request, params }: Route.ClientActionArgs) 
   const priceMax = parsePrice(result.data.priceMax);
   const fieldErrors = priceErrors(result.data.priceMin, result.data.priceMax);
   if (Object.keys(fieldErrors).length) return data({ error: "予算の下限と上限を確認してください。", fieldErrors }, { status: 400 });
+  const imageInput = readCaseImageChanges(formData);
+  if (imageInput.error) return data({ error: imageInput.error }, { status: 400 });
   if (isSupabaseConfigured() && params.caseId) {
     const supabase = getSupabaseBrowserClient();
     const { data: currentCase, error: currentCaseError } = await supabase.from("construction_cases")
@@ -65,14 +68,14 @@ export async function clientAction({ request, params }: Route.ClientActionArgs) 
       return data({ error: "この施工事例は編集できません。" }, { status: 403 });
     }
 
-    const files = formData.getAll("images").filter(isImageFile);
-    const removeIds = formData.getAll("removeImageIds").filter((value): value is string => typeof value === "string");
-    if (files.length) {
-      const { data: existingImages, error: existingImagesError } = await supabase.from("case_images")
-        .select("id").eq("case_id", params.caseId);
-      if (existingImagesError) return data({ error: "登録済みの画像を取得できませんでした。" }, { status: 400 });
-      const remainingCount = (existingImages ?? []).filter((image) => !removeIds.includes(image.id)).length;
-      const imageCountError = validateCaseImageCount(remainingCount, files.length);
+    const changes = imageInput.changes;
+    let existingImages: StoredCaseImage[] = [];
+    if (changes.cover || changes.files.length || changes.removedIds.length || changes.existing.length) {
+      const { data: images, error: imageError } = await supabase.from("case_images")
+        .select("id, storage_path, display_order").eq("case_id", params.caseId).order("display_order").order("id");
+      if (imageError) return data({ error: "登録済みの画像を取得できませんでした。" }, { status: 400 });
+      existingImages = images ?? [];
+      const imageCountError = validateCaseImageChanges(existingImages.map(image => image.id), changes);
       if (imageCountError) return data({ error: imageCountError }, { status: 400 });
     }
 
@@ -101,49 +104,8 @@ export async function clientAction({ request, params }: Route.ClientActionArgs) 
       if (styleError) return data({ error: "こだわり条件を更新できませんでした。" }, { status: 400 });
     }
 
-    if (removeIds.length) {
-      const { data: imageRows, error: imageRowsError } = await supabase.from("case_images")
-        .select("id, storage_path")
-        .eq("case_id", params.caseId)
-        .in("id", removeIds);
-      if (imageRowsError) return data({ error: "削除する画像を取得できませんでした。" }, { status: 400 });
-      const paths = (imageRows ?? []).map((row) => row.storage_path);
-      const storageError = await removeImages("case-images", paths);
-      if (storageError) return data({ error: "画像ファイルを削除できませんでした。" }, { status: 400 });
-      const { error: deleteRowsError } = await supabase.from("case_images")
-        .delete()
-        .eq("case_id", params.caseId)
-        .in("id", removeIds);
-      if (deleteRowsError) return data({ error: "画像情報を削除できませんでした。" }, { status: 400 });
-    }
-
-    const uploadedPaths: string[] = [];
-    for (const file of files) {
-      const uploaded = await uploadImage("case-images", `${currentCase.company_id}/${params.caseId}`, file, MAX_IMAGE_BYTES);
-      if (uploaded.error || !uploaded.path) {
-        await removeImages("case-images", uploadedPaths);
-        return data({ error: uploaded.error ?? "施工事例の画像をアップロードできませんでした。" }, { status: 400 });
-      }
-      uploadedPaths.push(uploaded.path);
-    }
-    if (uploadedPaths.length) {
-      const { data: lastImage } = await supabase.from("case_images")
-        .select("display_order")
-        .eq("case_id", params.caseId)
-        .order("display_order", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const startOrder = (lastImage?.display_order ?? -1) + 1;
-      const { error: imageError } = await supabase.from("case_images").insert(uploadedPaths.map((storagePath, index) => ({
-        case_id: params.caseId,
-        storage_path: storagePath,
-        display_order: startOrder + index,
-      })));
-      if (imageError) {
-        await removeImages("case-images", uploadedPaths);
-        return data({ error: "施工事例の画像を保存できませんでした。" }, { status: 400 });
-      }
-    }
+    const imageSaveError = await saveCaseImages(params.caseId, currentCase.company_id, existingImages, changes);
+    if (imageSaveError) return data({ error: imageSaveError }, { status: 400 });
     const { data: updatedStatus, error: statusError } = await supabase.from("construction_cases").update({
       status: result.data.status,
       published_at: result.data.status === "PUBLISHED" ? currentCase.published_at ?? new Date().toISOString() : currentCase.published_at,
@@ -169,15 +131,17 @@ export async function clientLoader({ request, params, serverLoader }: Route.Clie
     throw new Response("施工事例が見つかりません", { status: 404 });
   }
   const { data: imageRows, error: imageError } = await supabase.from("case_images")
-    .select("id, storage_path")
+    .select("id, storage_path, taken_on, description")
     .eq("case_id", params.caseId)
-    .order("display_order");
+    .order("display_order").order("id");
   if (imageError) throw imageError;
   const caseImages = (await Promise.all((imageRows ?? []).map(async (image) => ({
     id: image.id,
     storagePath: image.storage_path,
+    date: image.taken_on ?? undefined,
+    description: image.description ?? undefined,
     url: await getSignedImageUrl("case-images", image.storage_path, "thumbnail"),
-  })))).filter((image): image is CaseImageView => Boolean(image.url));
+  })))).map(image => ({ ...image, url: image.url ?? "" }));
   const [{ data: categories, error: categoriesError }, { data: styles, error: stylesError }, { data: selectedCategories, error: selectedCategoriesError }, { data: selectedStyles, error: selectedStylesError }] = await Promise.all([
     supabase.from("categories").select("id, name, is_active").order("display_order"),
     supabase.from("styles").select("id, name, is_active").order("display_order"),
@@ -229,19 +193,7 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
       {actionData && "saved" in actionData && actionData.saved ? <p className={ui["success-message"]} role="status">施工事例を保存しました。</p> : null}
       {actionData && "error" in actionData ? <p className={ui["form-error"]} role="alert">{actionData.error}</p> : null}
       <ManagedForm protect method="post" encType="multipart/form-data" className={ui["edit-form"]}>
-        <p className={ui["form-hint"]}>写真は登録順に表示します。施工前・施工後の区別は表示しません。</p>
-        <section className={ui["case-photo-editor"]}>
-          {loaderData.caseImages.map((image) => (
-            <div className={ui["case-photo-item"]} key={image.id}>
-              <StorageImage width={300} height={150} src={image.url} storagePath={image.storagePath} bucket="case-images" alt="施工事例" />
-              <label><input type="checkbox" name="removeImageIds" value={image.id} />削除</label>
-            </div>
-          ))}
-          <label className={ui["case-photo-add"]}>
-            <ImagePlus aria-hidden="true" /><span>写真を追加</span><span>1枚1MB以内・合計{MAX_CASE_IMAGES}枚まで</span>
-            <input key={JSON.stringify(loaderData.caseImages.map(image => image.id))} type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple />
-          </label>
-        </section>
+        <CaseImageEditor images={loaderData.caseImages} />
         <section className={ui["form-card"]}>
           <div className={ui["form-grid"]}>
             <Field label="タイトル"><input name="title" maxLength={160} defaultValue={loaderData.item.title} required /></Field>

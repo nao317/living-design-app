@@ -40,19 +40,15 @@ export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps)
   return (
     <PublicLayout>
       <article className={ui["public-page"] + " " + ui["company-detail-page"]}>
-        <section className={`${ui["company-detail-hero"]} ${!loaderData.company.image ? ui["company-detail-hero--text"] : ""}`}>
-          <div>
-            <h1>{loaderData.company.name}</h1>
+        <section className={ui["company-detail-hero"]}>
+          <h1>{loaderData.company.name}</h1>
+          {loaderData.company.image ? <StorageImage width={580} height={220} src={loaderData.company.image} storagePath={loaderData.company.imagePath} bucket="company-assets" alt={loaderData.company.name} loading="eager" fetchPriority="high" /> : null}
+          {loaderData.company.description || loaderData.company.features.length ? <div>
             {loaderData.company.description ? <p>{loaderData.company.description}</p> : null}
             {loaderData.company.features.length ? <div>{loaderData.company.features.map((feature) => <Tag key={feature}>{feature}</Tag>)}</div> : null}
-          </div>
-          {loaderData.company.image ? <StorageImage width={580} height={220} src={loaderData.company.image} storagePath={loaderData.company.imagePath} bucket="company-assets" alt={loaderData.company.name} loading="eager" fetchPriority="high" /> : null}
+          </div> : null}
         </section>
         <div className={ui["company-detail-body"]}>
-          <section className={ui["company-works"]}>
-            <h2>この会社の施工事例</h2>
-            {loaderData.cases.length ? <>{loaderData.cases.map((item) => <Link key={item.id} to={"/cases/" + item.id}><StorageImage width={85} height={60} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /><span>{item.title}<small className={ui["company-work-price"]}>{item.price}</small></span></Link>)}<Pagination totalItems={loaderData.casesTotal} currentPage={loaderData.casesPage} pageSize={pageSize} showSinglePage /></> : <p>公開中の施工事例はまだありません。</p>}
-          </section>
           <section className={ui["company-information"]}>
             <h2>会社情報</h2>
             <dl>
@@ -65,6 +61,10 @@ export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps)
               {loaderData.company.website ? <a className={ui["button"] + " " + ui["button--secondary"]} href={loaderData.company.website}>ホームページ <ExternalLink aria-hidden="true" size={14} /></a> : null}
               <Link className={ui["button"] + " " + ui["button--primary"]} to={"/contact?companyId=" + loaderData.company.id}><MessageSquare size={17} aria-hidden="true" />問い合わせ</Link>
             </div>
+          </section>
+          <section className={ui["company-works"]}>
+            <h2>この会社の施工事例</h2>
+            {loaderData.cases.length ? <>{loaderData.cases.map((item) => <Link key={item.id} to={"/cases/" + item.id}><StorageImage width={85} height={60} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /><span>{item.title}<small className={ui["company-work-price"]}>{item.price}</small></span></Link>)}<Pagination totalItems={loaderData.casesTotal} currentPage={loaderData.casesPage} pageSize={pageSize} showSinglePage /></> : <p>公開中の施工事例はまだありません。</p>}
           </section>
         </div>
       </article>

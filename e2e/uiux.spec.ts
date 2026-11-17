@@ -24,20 +24,25 @@ test("公開画面にページタイトルと本文へのリンクがある", as
   }
 });
 
-test("スマホの検索条件を開閉し、検索後は結果を先に表示する", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/search", { waitUntil: "domcontentloaded" });
-  const toggle = page.getByRole("button", { name: "検索条件を指定" });
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  expect((await page.getByRole("heading", { name: "検索結果", exact: true }).boundingBox())!.y).toBeLessThan(250);
-  await toggle.click();
-  await page.getByRole("textbox", { name: "キーワード" }).fill("収納");
-  await page.getByRole("button", { name: "事例を検索する" }).click();
-  await expect(page).toHaveURL(/q=/);
-  await expect(page.getByRole("button", { name: /検索条件（1件指定）/ })).toHaveAttribute("aria-expanded", "false");
-  await page.getByLabel("適用中の検索条件").getByRole("link", { name: "条件をクリア" }).click();
-  await expect(page).toHaveURL(/\/search$/);
-});
+for (const width of [1280, 390]) {
+  test(`${width}px幅の検索条件を開閉し、検索後は結果を先に表示する`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto("/search", { waitUntil: "domcontentloaded" });
+    const toggle = page.getByRole("button", { name: "検索条件を指定" });
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(page.locator("#search-filters")).toBeHidden();
+    expect((await page.getByRole("heading", { name: "検索結果", exact: true }).boundingBox())!.y).toBeLessThan(250);
+    await toggle.click();
+    await expect(page.locator("#search-filters")).toBeVisible();
+    await page.getByRole("textbox", { name: "キーワード" }).fill("収納");
+    await page.getByRole("button", { name: "事例を検索する" }).click();
+    await expect(page).toHaveURL(/q=/);
+    await expect(page.getByRole("button", { name: /検索条件（1件指定）/ })).toHaveAttribute("aria-expanded", "false");
+    await expect(page.locator("#search-filters")).toBeHidden();
+    await page.getByLabel("適用中の検索条件").getByRole("link", { name: "条件をクリア" }).click();
+    await expect(page).toHaveURL(/\/search$/);
+  });
+}
 
 test("モバイルメニューのフォーカスが背景へ移らずEscapeで閉じる", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -98,6 +103,7 @@ test("320px幅でも文字と操作が画面内に収まる", async ({ page }) =
 
 test("万円の予算を検索・並び替え・条件解除まで保持する", async ({ page }) => {
   await page.goto("/search?priceMin=125000&priceMax=3000000&q=収納&page=2");
+  await page.getByRole("button", { name: /検索条件（2件指定）/ }).click();
   await expect(page.getByRole("spinbutton", { name: "予算下限（万円）" })).toHaveValue("12.5");
   await expect(page.getByRole("spinbutton", { name: "予算上限（万円）" })).toHaveValue("300");
   await page.getByRole("spinbutton", { name: "予算上限（万円）" }).fill("200");
@@ -106,6 +112,7 @@ test("万円の予算を検索・並び替え・条件解除まで保持する",
   await page.getByRole("combobox", { name: "並び順" }).selectOption("price_asc");
   await expect(page).toHaveURL(/sort=price_asc/);
   expect(new URL(page.url()).searchParams.get("page")).toBeNull();
+  await page.getByRole("button", { name: /検索条件（2件指定）/ }).click();
   await expect(page.getByRole("spinbutton", { name: "予算上限（万円）" })).toHaveValue("200");
   await page.getByRole("link", { name: /^予算：.*を解除$/ }).click();
   await expect(page.getByRole("spinbutton", { name: "予算下限（万円）" })).toHaveValue("");
