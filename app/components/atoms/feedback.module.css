@@ -1,0 +1,5 @@
+.loading { display: inline-flex; align-items: center; justify-content: center; gap: 9px; color: var(--muted); }
+.spinner { width: 18px; height: 18px; flex: 0 0 auto; border: 2px solid #c7d1c9; border-top-color: var(--green-700); border-radius: 50%; animation: spin .8s linear infinite; }
+.error { border: 1px solid #e0a8a8; border-radius: 5px; background: #fff2f2; padding: 10px 13px; color: #8f2c2c; font-size: 14px; line-height: 1.65; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }

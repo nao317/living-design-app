@@ -1,3 +1,4 @@
+import ui from "../ui.module.css";
 import type { Route } from "./+types/admin-tags";
 import { data } from "react-router";
 import { z } from "zod";
@@ -72,15 +73,15 @@ export default function AdminTagsRoute({ loaderData, actionData }: Route.Compone
   const describe = (item: TaxonomyRequest) => `${kindLabel[item.kind]}・${operationLabel[item.operation]}：${item.proposed_name ?? itemNames.get(item.target_id ?? "") ?? "対象項目"}`;
 
   return <DashboardLayout type="admin">
-    <header className="page-heading"><h1>検索項目の申請審査</h1><p>企業からの追加・名称変更・削除申請を確認します。削除の承認後も既存事例との関連は保持されます。</p></header>
-    {actionData && "saved" in actionData && actionData.saved ? <p className="success-message" role="status">審査結果を保存しました。</p> : null}
-    {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
-    <section className="dashboard-section"><h2>審査中（{pending.length}件）</h2>
-      {pending.length === 0 ? <p>審査中の申請はありません。</p> : <div className="member-list taxonomy-list">{pending.map((item) => <div key={item.id}>
+    <header className={ui["page-heading"]}><h1>検索項目の申請審査</h1><p>企業からの追加・名称変更・削除申請を確認します。削除の承認後も既存事例との関連は保持されます。</p></header>
+    {actionData && "saved" in actionData && actionData.saved ? <p className={ui["success-message"]} role="status">審査結果を保存しました。</p> : null}
+    {actionData && "error" in actionData ? <p className={ui["form-error"]} role="alert">{actionData.error}</p> : null}
+    <section className={ui["dashboard-section"]}><h2>審査中（{pending.length}件）</h2>
+      {pending.length === 0 ? <p>審査中の申請はありません。</p> : <div className={ui["member-list"] + " " + ui["taxonomy-list"]}>{pending.map((item) => <div key={item.id}>
         <strong>{describe(item)}</strong><span>申請企業：{companyNames.get(item.company_id) ?? item.company_id}</span>
         {item.target_id ? <span>現在の項目：{itemNames.get(item.target_id) ?? "対象項目が見つかりません"}</span> : null}
         <span>申請理由：{item.reason}</span><small>{new Date(item.created_at).toLocaleString("ja-JP")}</small>
-        <InlineActionForm className="inline-form" successMessage="審査結果を保存しました。">{({ pending }) => <><input type="hidden" name="requestId" value={item.id} />
+        <InlineActionForm className={ui["inline-form"]} successMessage="審査結果を保存しました。">{({ pending }) => <><input type="hidden" name="requestId" value={item.id} />
           <input name="reviewReason" maxLength={1000} autoComplete="off" placeholder="例：同じ項目が登録済みのため…" aria-label={`${describe(item)}の審査理由`} />
           <PendingActionButton pending={pending} pendingLabel="保存中…" name="decision" value="APPROVED">承認</PendingActionButton>
           <PendingActionButton pending={pending} pendingLabel="保存中…" name="decision" value="REJECTED" variant="secondary" onClick={(event) => { if (!window.confirm("この申請を却下しますか？")) event.preventDefault(); }}>却下</PendingActionButton>
@@ -88,8 +89,8 @@ export default function AdminTagsRoute({ loaderData, actionData }: Route.Compone
       </div>)}</div>}
       <Pagination totalItems={loaderData.pendingTotal} currentPage={loaderData.pendingPage} pageSize={pageSize} paramName="pendingPage" ariaLabel="審査中の申請のページ送り" />
     </section>
-    <section className="dashboard-section"><h2>審査履歴</h2>
-      {reviewed.length === 0 ? <p>履歴はありません。</p> : <div className="member-list taxonomy-list">{reviewed.map((item) => <div key={item.id}>
+    <section className={ui["dashboard-section"]}><h2>審査履歴</h2>
+      {reviewed.length === 0 ? <p>履歴はありません。</p> : <div className={ui["member-list"] + " " + ui["taxonomy-list"]}>{reviewed.map((item) => <div key={item.id}>
         <strong>{describe(item)}</strong><span>{companyNames.get(item.company_id) ?? item.company_id}</span>
         <small>{statusLabel[item.status]} · {new Date(item.reviewed_at ?? item.created_at).toLocaleString("ja-JP")}</small>
         {item.review_reason ? <span>審査理由：{item.review_reason}</span> : null}

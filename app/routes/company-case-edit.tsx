@@ -1,3 +1,4 @@
+import ui from "../ui.module.css";
 import type { Route } from "./+types/company-case-edit";
 import { ImagePlus } from "lucide-react";
 import { data, useLocation } from "react-router";
@@ -8,6 +9,7 @@ import { validationErrors, priceErrors } from "../features/forms/validation";
 import { DashboardLayout } from "../components/templates/dashboard-layout";
 import type { CaseStudy } from "../features/cases/types";
 import { requireAuthorization } from "../features/auth/authorization.client";
+import { getActiveCompanyId } from "../features/auth/company-selection.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
 import { getSignedImageUrl, isImageFile, MAX_CASE_IMAGES, MAX_IMAGE_BYTES, removeImages, uploadImage, validateCaseImageCount } from "../features/media/image-storage.client";
 import { StorageImage } from "../features/media/storage-image";
@@ -59,7 +61,7 @@ export async function clientAction({ request, params }: Route.ClientActionArgs) 
       .eq("id", params.caseId)
       .maybeSingle();
     if (currentCaseError || !currentCase) return data({ error: "施工事例が見つかりません。" }, { status: 404 });
-    if (authorization.accountRole === "COMPANY" && !authorization.memberships.some((membership) => membership.companyId === currentCase.company_id)) {
+    if (authorization.accountRole === "COMPANY" && getActiveCompanyId(authorization) !== currentCase.company_id) {
       return data({ error: "この施工事例は編集できません。" }, { status: 403 });
     }
 
@@ -163,7 +165,7 @@ export async function clientLoader({ request, params, serverLoader }: Route.Clie
     .maybeSingle();
   if (error) throw error;
   if (!item) throw new Response("施工事例が見つかりません", { status: 404 });
-  if (authorization.accountRole === "COMPANY" && !authorization.memberships.some((membership) => membership.companyId === item.company_id)) {
+  if (authorization.accountRole === "COMPANY" && getActiveCompanyId(authorization) !== item.company_id) {
     throw new Response("施工事例が見つかりません", { status: 404 });
   }
   const { data: imageRows, error: imageError } = await supabase.from("case_images")
@@ -220,28 +222,28 @@ export function HydrateFallback() {
 
 export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.ComponentProps) {
   const isAdmin = useLocation().pathname.startsWith("/admin/");
-  if (!loaderData.item) return <DashboardLayout type={isAdmin ? "admin" : "company"}><div className="empty-state"><h1>施工事例が見つかりません</h1></div></DashboardLayout>;
+  if (!loaderData.item) return <DashboardLayout type={isAdmin ? "admin" : "company"}><div className={ui["empty-state"]}><h1>施工事例が見つかりません</h1></div></DashboardLayout>;
   return (
     <DashboardLayout type={isAdmin ? "admin" : "company"}>
-      <header className="page-heading"><h1>施工事例の編集</h1></header>
-      {actionData && "saved" in actionData && actionData.saved ? <p className="success-message" role="status">施工事例を保存しました。</p> : null}
-      {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
-      <ManagedForm protect method="post" encType="multipart/form-data" className="edit-form">
-        <p className="form-hint">写真は登録順に表示します。施工前・施工後の区別は表示しません。</p>
-        <section className="case-photo-editor">
+      <header className={ui["page-heading"]}><h1>施工事例の編集</h1></header>
+      {actionData && "saved" in actionData && actionData.saved ? <p className={ui["success-message"]} role="status">施工事例を保存しました。</p> : null}
+      {actionData && "error" in actionData ? <p className={ui["form-error"]} role="alert">{actionData.error}</p> : null}
+      <ManagedForm protect method="post" encType="multipart/form-data" className={ui["edit-form"]}>
+        <p className={ui["form-hint"]}>写真は登録順に表示します。施工前・施工後の区別は表示しません。</p>
+        <section className={ui["case-photo-editor"]}>
           {loaderData.caseImages.map((image) => (
-            <div className="case-photo-item" key={image.id}>
+            <div className={ui["case-photo-item"]} key={image.id}>
               <StorageImage width={300} height={150} src={image.url} storagePath={image.storagePath} bucket="case-images" alt="施工事例" />
               <label><input type="checkbox" name="removeImageIds" value={image.id} />削除</label>
             </div>
           ))}
-          <label className="case-photo-add">
+          <label className={ui["case-photo-add"]}>
             <ImagePlus aria-hidden="true" /><span>写真を追加</span><span>1枚1MB以内・合計{MAX_CASE_IMAGES}枚まで</span>
             <input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple />
           </label>
         </section>
-        <section className="form-card">
-          <div className="form-grid">
+        <section className={ui["form-card"]}>
+          <div className={ui["form-grid"]}>
             <Field label="タイトル"><input name="title" maxLength={160} defaultValue={loaderData.item.title} required /></Field>
             <Field label="施工地域"><input name="area" defaultValue={loaderData.item.area} /></Field>
             <Field label="施工期間"><input name="period" defaultValue={loaderData.item.period} /></Field>
@@ -250,9 +252,9 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
           </div>
           <Field label="概要"><textarea name="summary" maxLength={2000} rows={4} defaultValue={loaderData.item.summary} /></Field>
           <Field label="公開状態"><select name="status" defaultValue={loaderData.item.status ?? "DRAFT"}><option value="DRAFT">下書き</option><option value="PUBLISHED">公開</option><option value="ARCHIVED">非公開（アーカイブ）</option></select></Field>
-          <fieldset className="choice-list"><legend>リノベーション箇所</legend>{loaderData.categories.map((category) => <label key={category.id}><input type="checkbox" name="categoryIds" value={category.id} defaultChecked={loaderData.selectedCategoryIds.includes(category.id)} />{category.name}{!category.is_active ? "（現在は非表示）" : ""}</label>)}</fieldset>
-          <fieldset className="choice-list"><legend>こだわり条件</legend>{loaderData.styles.map((style) => <label key={style.id}><input type="checkbox" name="styleIds" value={style.id} defaultChecked={loaderData.selectedStyleIds.includes(style.id)} />{style.name}{!style.is_active ? "（現在は非表示）" : ""}</label>)}</fieldset>
-          <div className="form-actions"><SubmitButton>更新する</SubmitButton></div>
+          <fieldset className={ui["choice-list"]}><legend>リノベーション箇所</legend>{loaderData.categories.map((category) => <label key={category.id}><input type="checkbox" name="categoryIds" value={category.id} defaultChecked={loaderData.selectedCategoryIds.includes(category.id)} />{category.name}{!category.is_active ? "（現在は非表示）" : ""}</label>)}</fieldset>
+          <fieldset className={ui["choice-list"]}><legend>こだわり条件</legend>{loaderData.styles.map((style) => <label key={style.id}><input type="checkbox" name="styleIds" value={style.id} defaultChecked={loaderData.selectedStyleIds.includes(style.id)} />{style.name}{!style.is_active ? "（現在は非表示）" : ""}</label>)}</fieldset>
+          <div className={ui["form-actions"]}><SubmitButton>更新する</SubmitButton></div>
         </section>
       </ManagedForm>
     </DashboardLayout>

@@ -1,3 +1,59 @@
+:global(:root) {
+  color-scheme: light;
+  --font-sans: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+  --green-950: #173a23;
+  --green-900: #1f462b;
+  --green-700: #356b42;
+  --green-500: #68c46d;
+  --green-300: #a7eba5;
+  --green-100: #edf8eb;
+  --blue-600: #176fdc;
+  --ink: #253129;
+  --muted: #657069;
+  --line: #d9dfda;
+  --surface: #ffffff;
+  --surface-soft: #f7f9f7;
+  --shadow: 0 8px 26px rgb(26 52 34 / 10%);
+  --focus-yellow: #ffd43d;
+  --focus-black: #000000;
+}
+
+:global(*),
+:global(*::before),
+:global(*::after) { box-sizing: border-box; }
+
+:global(html),
+:global(body) {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+:global(html) { scroll-padding-top: 80px; }
+:global(body) { overflow-x: hidden; }
+:global(button),
+:global(a),
+:global(input),
+:global(select),
+:global(textarea) {
+  font: inherit;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgb(23 111 220 / 18%);
+}
+:global(button), :global(select) { cursor: pointer; }
+:global(a) { color: inherit; text-decoration: none; }
+:global(img) { display: block; max-width: 100%; }
+:global(:is(a, button, input, select, textarea, summary):focus-visible) {
+  outline: 2px solid var(--focus-black);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 4px var(--focus-yellow);
+}
+:global(:is(h1, h2, h3, p, dd)) { overflow-wrap: anywhere; }
+:global(:is(h1, h2, h3)) { scroll-margin-top: 80px; text-wrap: balance; }
+
 .appShell {
   display: flex;
   flex-direction: column;

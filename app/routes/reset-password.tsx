@@ -1,3 +1,4 @@
+import ui from "../ui.module.css";
 import { Link } from "react-router";
 import { z } from "zod";
 import type { Route } from "./+types/reset-password";
@@ -17,7 +18,7 @@ export async function clientLoader() {
   } catch { return { canReset: false }; }
 }
 clientLoader.hydrate = true as const;
-export function HydrateFallback() { return <main id="main-content" tabIndex={-1} className="auth-page"><p role="status">再設定リンクを確認しています…</p></main>; }
+export function HydrateFallback() { return <main id="main-content" tabIndex={-1} className={ui["auth-page"]}><p role="status">再設定リンクを確認しています…</p></main>; }
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const result = z.object({ password: z.string().min(8, "8文字以上で入力してください。"), passwordConfirmation: z.string() }).refine((values) => values.password === values.passwordConfirmation, { path: ["passwordConfirmation"], message: "パスワードが一致しません。" }).safeParse(Object.fromEntries(await request.formData()));
@@ -34,11 +35,11 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 
 export default function ResetPasswordRoute({ loaderData, actionData }: Route.ComponentProps) {
   const saved = actionData && "saved" in actionData && actionData.saved;
-  return <main id="main-content" tabIndex={-1} className="auth-page"><section className="auth-panel">
+  return <main id="main-content" tabIndex={-1} className={ui["auth-page"]}><section className={ui["auth-panel"]}>
     <h1>新しいパスワードを設定</h1>
-    {saved ? <><p className="form-success" role="status">パスワードを更新しました。</p><Link to="/login" className="button button--primary">ログインへ</Link></> : !loaderData.canReset ? <><p className="form-error" role="alert">再設定リンクを確認できませんでした。メール内のリンクを開くか、再設定メールをもう一度送信してください。</p><Link to="/forgot-password">再設定メールを送る</Link></> : <>
-      {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
-      <ManagedForm method="post" protect className="auth-form">
+    {saved ? <><p className={ui["form-success"]} role="status">パスワードを更新しました。</p><Link to="/login" className={ui["button"] + " " + ui["button--primary"]}>ログインへ</Link></> : !loaderData.canReset ? <><p className={ui["form-error"]} role="alert">再設定リンクを確認できませんでした。メール内のリンクを開くか、再設定メールをもう一度送信してください。</p><Link to="/forgot-password">再設定メールを送る</Link></> : <>
+      {actionData && "error" in actionData ? <p className={ui["form-error"]} role="alert">{actionData.error}</p> : null}
+      <ManagedForm method="post" protect className={ui["auth-form"]}>
         <Field label="新しいパスワード" hint="8文字以上で入力してください。"><input type="password" name="password" autoComplete="new-password" minLength={8} required /></Field>
         <Field label="新しいパスワード（確認）"><input type="password" name="passwordConfirmation" autoComplete="new-password" minLength={8} required /></Field>
         <SubmitButton pendingLabel="更新中…">パスワードを更新する</SubmitButton>

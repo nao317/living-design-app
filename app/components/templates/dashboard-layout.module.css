@@ -1,0 +1,54 @@
+.shell { min-height: calc(100vh - 64px); background: #f7f8f7; }
+
+.main {
+  width: calc(100% - 240px);
+  min-height: calc(100vh - 64px);
+  margin-left: 240px;
+  padding: 36px clamp(24px, 4vw, 56px) 72px;
+}
+
+.content { width: min(1120px, 100%); margin-inline: auto; }
+
+.mobileBar { display: none; }
+.backdrop { display: none; }
+
+@media (max-width: 820px) {
+  .main { width: 100%; margin-left: 0; padding: 76px 20px 56px; }
+  .mobileBar {
+    position: fixed;
+    z-index: 30;
+    top: 64px;
+    right: 0;
+    left: 0;
+    display: flex;
+    min-height: 52px;
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+    background: rgb(255 255 255 / 96%);
+    padding: 6px 16px;
+  }
+  .menuButton {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--green-950);
+    font-weight: 700;
+  }
+  .backdrop {
+    position: fixed;
+    z-index: 35;
+    inset: 64px 0 0;
+    display: block;
+    border: 0;
+    background: rgb(9 24 13 / 46%);
+    padding: 0;
+  }
+}
+
+@media (max-width: 390px) { .main { padding-inline: 14px; } }

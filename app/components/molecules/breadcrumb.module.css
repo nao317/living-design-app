@@ -1,0 +1,6 @@
+.nav { margin-bottom: 18px; }
+.list { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 0; padding: 0; list-style: none; color: var(--muted); font-size: 13px; }
+.list li { display: inline-flex; align-items: center; gap: 7px; }
+.list li:not(:last-child)::after { content: "/"; color: #9ca69f; }
+.list a:hover { color: var(--green-700); text-decoration: underline; }
+.current { color: var(--ink); font-weight: 600; }

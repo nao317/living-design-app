@@ -41,7 +41,7 @@ vi.mock("../lib/supabase.client", () => ({
   }),
 }));
 
-import { clientAction } from "./company-dashboard";
+import { clientAction } from "./company-cases";
 
 function deleteRequest() {
   return {
