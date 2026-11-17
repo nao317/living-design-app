@@ -1,5 +1,4 @@
 import ui from "../ui.module.css";
-import { Files, Mail, PencilLine, Users } from "lucide-react";
 import { Link } from "react-router";
 import type { Route } from "./+types/company-dashboard";
 import { PageHeader } from "../components/molecules";
@@ -7,40 +6,41 @@ import { DashboardLayout } from "../components/templates/dashboard-layout";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { getActiveCompanyId, setActiveCompanyId } from "../features/auth/company-selection.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
-import { StorageImage } from "../features/media/storage-image";
 import { getSupabaseBrowserClient } from "../lib/supabase.client";
 
 type CompanyOption = { id: string; name: string };
-type CompanyOverview = { id: string; name: string; description: string; cover_image_path: string | null; logo_path: string | null };
-export function loader() { return { company: null as CompanyOverview | null, companies: [] as CompanyOption[], activeCompanyId: "" }; }
+type Message = { id: string; sender_name: string; subject: string; created_at: string };
+type Draft = { id: string; title: string };
+export function loader() { return { company: null as CompanyOption | null, companies: [] as CompanyOption[], activeCompanyId: "", messages: [] as Message[], messageCount: 0, drafts: [] as Draft[], draftCount: 0 }; }
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
   const context = await requireAuthorization(request, { role: "COMPANY" });
   const activeCompanyId = getActiveCompanyId(context) ?? "";
   const supabase = getSupabaseBrowserClient();
-  const [company, companies, serverData] = await Promise.all([
-    supabase.from("companies").select("id, name, description, cover_image_path, logo_path").eq("id", activeCompanyId).maybeSingle(),
+  const [companies, messages, drafts, serverData] = await Promise.all([
     supabase.from("companies").select("id, name").in("id", context.memberships.map(({ companyId }) => companyId)).order("name"),
+    supabase.from("contact_messages").select("id, sender_name, subject, created_at", { count: "exact" }).eq("company_id", activeCompanyId).eq("status", "NEW").order("created_at", { ascending: false }).limit(5),
+    supabase.from("construction_cases").select("id, title", { count: "exact" }).eq("company_id", activeCompanyId).eq("status", "DRAFT").order("created_at", { ascending: false }).limit(5),
     serverLoader(),
   ]);
-  if (company.error) throw company.error;
-  if (companies.error) throw companies.error;
-  return { ...serverData, company: company.data as CompanyOverview | null, companies: (companies.data ?? []) as CompanyOption[], activeCompanyId };
+  for (const result of [companies, messages, drafts]) if (result.error) throw result.error;
+  const options = companies.data as CompanyOption[];
+  return { ...serverData, company: options.find(company => company.id === activeCompanyId) ?? null, companies: options, activeCompanyId, messages: messages.data as Message[], messageCount: messages.count ?? 0, drafts: drafts.data as Draft[], draftCount: drafts.count ?? 0 };
 }
 clientLoader.hydrate = true as const;
 export function HydrateFallback() { return <ProtectedRouteFallback />; }
-
-const sections = [
-  ["/company/cases", "施工事例", "施工事例の追加、編集、公開状態を管理します。", Files],
-  ["/company/messages", "お問い合わせ", "利用者から届いた相談を確認します。", Mail],
-  ["/company/members", "所属ユーザー", "企業に所属するユーザーを確認します。", Users],
-  ["/company/profile/edit", "企業情報", "公開プロフィールと連絡先を更新します。", PencilLine],
-] as const;
-
+const date = new Intl.DateTimeFormat("ja-JP", { month: "short", day: "numeric" });
 export default function CompanyDashboardRoute({ loaderData }: Route.ComponentProps) {
   return <DashboardLayout type="company">
-    <PageHeader eyebrow="COMPANY" title={loaderData.company?.name ?? "企業管理"} description={loaderData.company?.description || "企業情報と施工事例、お問い合わせを機能ごとに管理できます。"} actions={loaderData.companies.length > 1 ? <label className={ui["company-switcher"]}>操作する企業<select value={loaderData.activeCompanyId} onChange={(event) => { if (setActiveCompanyId(loaderData.companies.map(({ id }) => id), event.currentTarget.value)) window.location.reload(); }}>{loaderData.companies.map((company) => <option value={company.id} key={company.id}>{company.name}</option>)}</select></label> : null} />
-    {loaderData.company ? <div className={ui["company-overview-image"]}>{loaderData.company.cover_image_path || loaderData.company.logo_path ? <StorageImage width={1120} height={260} src="" storagePath={loaderData.company.cover_image_path ?? loaderData.company.logo_path ?? undefined} bucket="company-assets" alt="" /> : <div className={ui["image-empty"]}>企業画像未登録</div>}</div> : null}
-    <div className={ui["dashboard-link-grid"]}>{sections.map(([href, title, description, Icon]) => <Link className={ui["dashboard-link-card"]} to={href} key={href}><Icon aria-hidden="true" size={22} /><span><strong>{title}</strong><small>{description}</small></span></Link>)}</div>
+    <PageHeader title={loaderData.company?.name ?? "企業管理"} actions={<><Link className={ui.button + " " + ui["button--primary"]} to="/company/cases/new">施工事例を追加</Link>{loaderData.companies.length > 1 ? <label className={ui["company-switcher"]}>操作する企業<select value={loaderData.activeCompanyId} onChange={event => { if (setActiveCompanyId(loaderData.companies.map(({ id }) => id), event.currentTarget.value)) window.location.reload(); }}>{loaderData.companies.map(company => <option value={company.id} key={company.id}>{company.name}</option>)}</select></label> : null}</>} />
+    <section className={ui["work-section"]}>
+      <div className={ui["section-header"]}><h2>未読のお問い合わせ <span>{loaderData.messageCount}件</span></h2><Link to="/company/messages?status=NEW">未読を確認</Link></div>
+      {loaderData.messages.length ? <ul className={ui["work-list"]}>{loaderData.messages.map(message => <li key={message.id}><Link to={`/company/messages?status=NEW#message-${message.id}`}><span><strong>{message.sender_name}さん</strong><small>{message.subject}</small></span><time dateTime={message.created_at}>{date.format(new Date(message.created_at))}</time></Link></li>)}</ul> : <p className={ui["work-empty"]}>未読のお問い合わせはありません。</p>}
+    </section>
+    <section className={ui["work-section"]}>
+      <div className={ui["section-header"]}><h2>編集中の施工事例 <span>{loaderData.draftCount}件</span></h2><Link to="/company/cases">事例一覧へ</Link></div>
+      {loaderData.drafts.length ? <ul className={ui["work-list"]}>{loaderData.drafts.map(item => <li key={item.id}><Link to={`/company/cases/${item.id}/edit`}><strong>{item.title}</strong><span>編集を続ける</span></Link></li>)}</ul> : <p className={ui["work-empty"]}>編集中の事例はありません。新しい施工事例は「施工事例を追加」から登録できます。</p>}
+    </section>
+    <nav className={ui["management-links"]} aria-label="企業情報の管理"><Link to="/company/profile/edit">企業情報を編集</Link><Link to="/company/members">所属ユーザーを確認</Link>{loaderData.company ? <Link to={`/companies/${loaderData.company.id}`}>公開中の企業ページを見る</Link> : null}</nav>
   </DashboardLayout>;
 }
 export function meta() { return [{ title: "企業管理 | 飯塚のリノベ" }]; }

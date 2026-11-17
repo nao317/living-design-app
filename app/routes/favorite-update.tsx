@@ -1,20 +1,23 @@
-import { data, redirect } from "react-router";
+import { data } from "react-router";
 import { z } from "zod";
 import type { Route } from "./+types/favorite-update";
 import { getAuthorizationContext } from "../features/auth/authorization.client";
-import { safeRedirectTo } from "../features/auth/redirect";
+import { saveGuestFavorite } from "../features/favorites/guest-favorites.client";
 import { getSupabaseBrowserClient } from "../lib/supabase.client";
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
   const values = Object.fromEntries(await request.formData());
   try {
     const authorization = await getAuthorizationContext();
-    if (!authorization) throw redirect(`/login?redirectTo=${encodeURIComponent(safeRedirectTo(values.redirectTo, "/search"))}`);
-    if (authorization.accountRole !== "GENERAL") throw new Response("権限がありません", { status: 404 });
+    if (authorization && authorization.accountRole !== "GENERAL") throw new Response("権限がありません", { status: 404 });
     const result = z.object({ caseId: z.uuid(), saved: z.enum(["true", "false"]) }).safeParse(values);
     if (!result.success) return data({ error: "施工事例を確認して、もう一度お試しください。" }, { status: 400 });
     const { caseId } = result.data;
     const saved = result.data.saved === "true";
+    if (!authorization) {
+      saveGuestFavorite(caseId, saved);
+      return { caseId, saved, error: "" };
+    }
     const supabase = getSupabaseBrowserClient();
     const { error } = saved
       ? await supabase.from("favorites").upsert({ user_id: authorization.userId, case_id: caseId }, { onConflict: "user_id,case_id", ignoreDuplicates: true })

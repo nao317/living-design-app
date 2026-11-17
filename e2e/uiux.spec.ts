@@ -32,7 +32,7 @@ test("スマホの検索条件を開閉し、検索後は結果を先に表示�
   expect((await page.getByRole("heading", { name: "検索結果", exact: true }).boundingBox())!.y).toBeLessThan(250);
   await toggle.click();
   await page.getByRole("textbox", { name: "キーワード" }).fill("収納");
-  await page.getByRole("button", { name: "検索する" }).click();
+  await page.getByRole("button", { name: "事例を検索する" }).click();
   await expect(page).toHaveURL(/q=/);
   await expect(page.getByRole("button", { name: /検索条件（1件指定）/ })).toHaveAttribute("aria-expanded", "false");
   await page.getByLabel("適用中の検索条件").getByRole("link", { name: "条件をクリア" }).click();
@@ -94,4 +94,31 @@ test("320px幅でも文字と操作が画面内に収まる", async ({ page }) =
     await page.goto(path, { waitUntil: "domcontentloaded" });
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), path).toBeLessThanOrEqual(1);
   }
+});
+
+test("万円の予算を検索・並び替え・条件解除まで保持する", async ({ page }) => {
+  await page.goto("/search?priceMin=125000&priceMax=3000000&q=収納&page=2");
+  await expect(page.getByRole("spinbutton", { name: "予算下限（万円）" })).toHaveValue("12.5");
+  await expect(page.getByRole("spinbutton", { name: "予算上限（万円）" })).toHaveValue("300");
+  await page.getByRole("spinbutton", { name: "予算上限（万円）" }).fill("200");
+  await page.getByRole("button", { name: "事例を検索する" }).click();
+  await expect(page).toHaveURL(/budgetMax=200/);
+  await page.getByRole("combobox", { name: "並び順" }).selectOption("price_asc");
+  await expect(page).toHaveURL(/sort=price_asc/);
+  expect(new URL(page.url()).searchParams.get("page")).toBeNull();
+  await expect(page.getByRole("spinbutton", { name: "予算上限（万円）" })).toHaveValue("200");
+  await page.getByRole("link", { name: /^予算：.*を解除$/ }).click();
+  await expect(page.getByRole("spinbutton", { name: "予算下限（万円）" })).toHaveValue("");
+  await expect(page.getByRole("spinbutton", { name: "予算上限（万円）" })).toHaveValue("");
+  await expect(page.getByRole("textbox", { name: "キーワード" })).toHaveValue("収納");
+});
+
+test("未ログインでも保存一覧を開ける", async ({ page }) => {
+  await page.goto("/mypage/favorites");
+  await expect(page).toHaveURL(/\/mypage\/favorites$/);
+  await expect(page.getByRole("heading", { name: "お気に入り", exact: true })).toBeVisible();
+  await expect(page.getByText("このブラウザーに保存した事例です。", { exact: false })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "メニューを開く" }).click();
+  await expect(page.getByRole("navigation", { name: "メインメニュー" })).toBeVisible();
 });

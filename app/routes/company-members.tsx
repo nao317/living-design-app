@@ -30,8 +30,8 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
 clientLoader.hydrate = true as const;
 export function HydrateFallback() { return <ProtectedRouteFallback />; }
 export default function CompanyMembersRoute({ loaderData }: Route.ComponentProps) {
-  return <DashboardLayout type="company"><PageHeader eyebrow="組織" title="所属ユーザー" description="この企業の情報と施工事例を管理できるユーザーです。" />
-    {loaderData.items.length ? <DataTable caption="所属ユーザー一覧" headers={["ユーザー", "ユーザーID", "権限"]}>{loaderData.items.map((member) => <tr key={member.user_id}><td><Avatar name={member.name} /> <strong>{member.name}</strong></td><td>{member.user_id}</td><td><StatusBadge tone={member.role === "OWNER" ? "success" : "neutral"}>{labels[member.role]}</StatusBadge></td></tr>)}</DataTable> : <EmptyState title="所属ユーザーはいません" />}
+  return <DashboardLayout type="company"><PageHeader title="所属ユーザー" description="この企業の情報と施工事例を管理できるユーザーです。" />
+    {loaderData.items.length ? <DataTable caption="所属ユーザー一覧" headers={["ユーザー", "権限"]}>{loaderData.items.map((member) => <tr key={member.user_id}><td><Avatar name={member.name} /> <strong>{member.name}</strong></td><td><StatusBadge tone={member.role === "OWNER" ? "success" : "neutral"}>{labels[member.role]}</StatusBadge></td></tr>)}</DataTable> : <EmptyState title="所属ユーザーはいません" />}
     <Pagination totalItems={loaderData.total} currentPage={loaderData.page} pageSize={pageSize} />
   </DashboardLayout>;
 }

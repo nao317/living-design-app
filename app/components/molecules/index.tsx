@@ -72,10 +72,7 @@ function FavoriteControl({ caseId, presentation }: { caseId: string; presentatio
   const pending = fetcher.state !== "idle";
   if (authorization && authorization.accountRole !== "GENERAL") return null;
   const iconOnly = presentation === "icon";
-  if (ready && !error && !authorization) return <Link
-    className={ui["favorite"]} to={`/login?redirectTo=${encodeURIComponent(location.pathname + location.search)}`}
-    aria-label="ログインしてお気に入りに追加"
-  ><Heart size={15} aria-hidden="true" />{iconOnly ? null : "お気に入りへ"}</Link>;
+
 
   return (
     <span className={ui["favorite-control"]}>
@@ -88,6 +85,7 @@ function FavoriteControl({ caseId, presentation }: { caseId: string; presentatio
       }}
       aria-label={active ? "お気に入りから削除" : "お気に入りに追加"}
       aria-pressed={active}
+      title={!authorization ? "この端末に保存します。ログインするとアカウントへ引き継げます。" : undefined}
     >
       <Heart size={15} fill={active ? "currentColor" : "none"} aria-hidden="true" />
       {iconOnly ? null : pending ? "保存中…" : active ? "お気に入り済み" : "お気に入りへ"}
@@ -110,11 +108,12 @@ export function CaseCard({ item }: { item: CaseStudy }) {
   return (
     <article className={ui["case-card"]}>
       <Link to={"/cases/" + item.id} className={ui["case-card__image"]} aria-label={item.title + "の詳細を見る"}>
-        {item.image ? <StorageImage width={800} height={472} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /> : <span className={ui["image-empty"]}>画像未登録</span>}
+        {item.image ? <StorageImage width={800} height={472} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /> : <span className={ui["image-empty"]}>写真の掲載なし</span>}
       </Link>
       <div className={ui["case-card__body"]}>
         <h3><Link to={"/cases/" + item.id}>{item.title}</Link></h3>
         {item.status && item.status !== "PUBLISHED" ? <p className={ui["case-card__status"]}>{item.status === "DRAFT" ? "下書き・検索には表示されません" : "非公開・検索には表示されません"}</p> : null}
+        <p className={ui["case-card__price"]}>{item.price}</p>
         <p><Building2 aria-hidden="true" size={13} />{item.company}</p>
         <div className={ui["case-card__meta"]}>
           <span><MapPin aria-hidden="true" size={13} />{item.area}</span>
@@ -132,18 +131,17 @@ export function CaseListItem({ item }: { item: CaseStudy }) {
   return (
     <article className={ui["case-list-item"]}>
       <Link to={detailUrl} className={ui["case-list-item__image"]}>
-        {item.image ? <StorageImage width={190} height={112} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /> : <span className={ui["image-empty"]}>画像未登録</span>}
+        {item.image ? <StorageImage width={190} height={112} src={item.image} storagePath={item.imagePath} bucket="case-images" alt={item.title} /> : <span className={ui["image-empty"]}>写真の掲載なし</span>}
       </Link>
       <div className={ui["case-list-item__body"]}>
         <h2><Link to={detailUrl}>{item.title}</Link></h2>
-        <p className={ui["case-list-item__company"]}><Building2 aria-hidden="true" size={14} />{item.company}</p>
-        <p>{item.categories.join("・") || "箇所未登録"} / {item.area || "地域未登録"}</p>
-        <p>費用目安：{item.price} / 施工期間：{item.period}</p>
+        <p className={ui["case-list-item__company"]}><Link to={"/companies/" + item.companyId}>{item.company}</Link></p>
+        <p>{item.categories.join("・") || "箇所の記載なし"} / {item.area || "地域の記載なし"}</p>
+        <p className={ui["case-list-item__price"]}>{item.price}</p>
+        <p>施工期間：{item.period || "要相談"}</p>
       </div>
       <div className={ui["case-list-item__actions"]}>
-        <Link className={ui["button"] + " " + ui["button--secondary"]} to={"/companies/" + item.companyId}>企業情報を見る</Link>
         <FavoriteButton caseId={item.id} />
-        <Link className={ui["button"] + " " + ui["button--primary"]} to={detailUrl}>詳細を見る</Link>
       </div>
     </article>
   );

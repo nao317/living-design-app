@@ -47,12 +47,12 @@ export default function CompaniesRoute({ loaderData }: Route.ComponentProps) {
           <>
             <div className={ui["company-directory"]}>
               {loaderData.items.map((company) => (
-                <article className={ui["company-directory__item"]} key={company.id}>
-                  {company.imagePath ? <StorageImage width={150} height={150} src={company.image} storagePath={company.imagePath} bucket="company-assets" preset="card" alt="" /> : <div className={ui["image-empty"]}>企業画像未登録</div>}
+                <article className={`${ui["company-directory__item"]} ${!company.imagePath ? ui["company-directory__item--text"] : ""}`} key={company.id}>
+                  {company.imagePath ? <StorageImage width={150} height={150} src={company.image} storagePath={company.imagePath} bucket="company-assets" preset="card" alt="" /> : null}
                   <div>
                     <h2>{company.name}</h2>
-                    <p>{company.description || "企業紹介は準備中です。"}</p>
-                    <p className={ui["company-directory__address"]}>{company.address || "所在地未登録"}</p>
+                    {company.description ? <p>{company.description}</p> : null}
+                    <p className={ui["company-directory__address"]}>{company.address || "所在地の掲載なし"}</p>
                     <Link className={ui["button"] + " " + ui["button--secondary"]} to={`/companies/${company.id}`}>企業情報を見る</Link>
                   </div>
                 </article>

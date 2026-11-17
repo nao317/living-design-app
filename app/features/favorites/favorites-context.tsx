@@ -1,4 +1,5 @@
 import { createContext, use, useEffect, useState, type ReactNode } from "react";
+import { readGuestFavorites, transferGuestFavorites } from "./guest-favorites.client";
 import { useAuth } from "../auth/auth-context";
 import type { AuthorizationContext } from "../auth/authorization.client";
 
@@ -15,13 +16,21 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const { state: { authorization }, meta: auth } = useAuth();
   const userId = authorization?.accountRole === "GENERAL" ? authorization.userId : null;
   const [loaded, setLoaded] = useState<LoadedFavorites>();
+  const [guestIds, setGuestIds] = useState<ReadonlySet<string>>(emptyIds);
+  useEffect(() => {
+    const update = () => setGuestIds(new Set(readGuestFavorites()));
+    update();
+    window.addEventListener("storage", update);
+    window.addEventListener("guest-favorites-changed", update);
+    return () => { window.removeEventListener("storage", update); window.removeEventListener("guest-favorites-changed", update); };
+  }, []);
 
   useEffect(() => {
     if (!userId) return;
     let active = true;
     let changedDuringLoad = false;
     void import("../../lib/supabase.client")
-      .then(({ getSupabaseBrowserClient }) => getSupabaseBrowserClient().from("favorites").select("case_id").eq("user_id", userId))
+      .then(async ({ getSupabaseBrowserClient }) => { await transferGuestFavorites(userId).catch(() => undefined); return getSupabaseBrowserClient().from("favorites").select("case_id").eq("user_id", userId); })
       .then(({ data, error }) => {
       if (!active || changedDuringLoad) return;
       setLoaded({ userId, ids: new Set((data ?? []).map((row) => row.case_id as string)), error: Boolean(error) });
@@ -43,7 +52,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
 
   const current = loaded?.userId === userId ? loaded : undefined;
   return <FavoritesContext value={{
-    state: { authorization, ids: current?.ids ?? emptyIds },
+    state: { authorization, ids: userId ? current?.ids ?? emptyIds : guestIds },
     meta: { ready: auth.ready && (!userId || Boolean(current)), error: auth.error || Boolean(current?.error) },
   }}>{children}</FavoritesContext>;
 }

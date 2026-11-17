@@ -40,7 +40,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   return error ? { error: "アカウントロールを更新できませんでした。" } : { saved: true };
 }
 export default function AdminUsersRoute({ loaderData, actionData }: Route.ComponentProps) {
-  return <DashboardLayout type="admin"><PageHeader eyebrow="管理" title="ユーザー" description="アカウント権限と企業所属を変更します。" />
+  return <DashboardLayout type="admin"><PageHeader title="ユーザー" description="アカウント権限と企業所属を変更します。" />
     {actionData && "error" in actionData ? <p className={ui["form-error"]} role="alert">{actionData.error}</p> : null}
     <DataTable caption="ユーザー一覧" headers={["ユーザー", "ID", "権限・所属"]}>{loaderData.users.map((user) => <tr key={user.id}><td><strong>{user.display_name || "名前未登録"}</strong></td><td>{user.id}</td><td><InlineActionForm className={ui["table-action-form"]} successMessage="保存しました。">{({ pending }) => <><input type="hidden" name="userId" value={user.id} /><select name="accountRole" defaultValue={user.account_role} aria-label={`${user.display_name}の権限`}><option value="GENERAL">一般</option><option value="COMPANY">企業</option><option value="ADMIN">管理者</option></select><select name="companyId" defaultValue="" aria-label={`${user.display_name}の所属企業`}><option value="">所属企業なし</option>{loaderData.companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}</select><span className={dataTableStyles.actions}><PendingActionButton pending={pending} pendingLabel="保存中…">保存</PendingActionButton></span></>}</InlineActionForm></td></tr>)}</DataTable>
     <Pagination totalItems={loaderData.total} currentPage={loaderData.page} pageSize={pageSize} />

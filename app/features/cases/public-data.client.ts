@@ -526,3 +526,13 @@ export async function fetchPublishedCompanyContacts(): Promise<CompanyContactOpt
     name: company.name,
   }));
 }
+
+export async function fetchSavedCases(ids: string[]) {
+  if (!ids.length || !isSupabaseConfigured()) return [];
+  const { data, error } = await getSupabaseBrowserClient().from("construction_cases")
+    .select("id, company_id, title, summary, area, price_min, price_max, construction_period")
+    .eq("status", "PUBLISHED").in("id", ids);
+  if (error) throw error;
+  const byId = new Map(((data ?? []) as CaseRow[]).map(row => [row.id, row]));
+  return fetchCasesByRows(ids.flatMap(id => { const row = byId.get(id); return row ? [row] : []; }));
+}
