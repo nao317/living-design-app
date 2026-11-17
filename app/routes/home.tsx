@@ -3,8 +3,9 @@ import { Building2 } from "lucide-react";
 import { Link } from "react-router";
 import { HomeFilters } from "../components/organisms/filters";
 import { CaseMarquee } from "../components/organisms/case-marquee";
+import { PartnerMap } from "../components/organisms/partner-map";
 import { PublicLayout } from "../components/templates/public-layout";
-import { PublicRouteFallback } from "../components/templates/public-route-fallback";
+import { LoadingIndicator } from "../components/atoms";
 import { fetchPublishedCases, fetchSearchOptions, type SearchOption } from "../features/cases/public-data.client";
 import type { CaseStudy } from "../features/cases/types";
 import type { Route } from "./+types/home";
@@ -17,13 +18,19 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
   return { ...serverData, ...options, cases: cases.items, loadError: cases.error };
 }
 clientLoader.hydrate = true as const;
-export function HydrateFallback() { return <PublicRouteFallback label="施工事例を読み込んでいます…" />; }
+export function HydrateFallback() {
+  return <PublicLayout><div className={ui["public-page"] + " " + ui["home-page"]}>
+    <PartnerMap />
+    <LoadingIndicator label="施工事例を読み込んでいます…" />
+  </div></PublicLayout>;
+}
 export function meta() {
   return [{ title: "飯塚のリノベ" }, { name: "description", content: "飯塚エリアのリフォーム・リノベーション施工事例を、写真と費用から探せます。" }];
 }
 export default function HomeRoute({ loaderData }: Route.ComponentProps) {
   return <PublicLayout>
     <div className={ui["public-page"] + " " + ui["home-page"]}>
+      <PartnerMap />
       <section className={ui["home-search"]} aria-labelledby="home-search-title">
         <h1 id="home-search-title">検索</h1>
         <HomeFilters categories={loaderData.categories} styles={loaderData.styles} />
