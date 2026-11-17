@@ -627,7 +627,7 @@ button[aria-busy="true"] { cursor: wait; }
 .case-company img {
   width: 100%;
   height: 95px;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .auth-page {
@@ -1318,7 +1318,7 @@ button[aria-busy="true"] { cursor: wait; }
 .company-detail-hero img {
   width: 100%;
   height: 220px;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .company-detail-body {
@@ -1378,8 +1378,14 @@ button[aria-busy="true"] { cursor: wait; }
   font-weight: 700;
 }
 
-.company-information .button {
-  margin: 8px 8px 0 0;
+.company-information-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.company-information-actions .button {
+  height: 44px;
 }
 
 .contact-page {
