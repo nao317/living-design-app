@@ -1,82 +1,43 @@
 import ui from "../ui.module.css";
 import { Link } from "react-router";
 import { HomeFilters } from "../components/organisms/filters";
+import { CaseGrid } from "../components/organisms";
 import { PublicLayout } from "../components/templates/public-layout";
 import { PublicRouteFallback } from "../components/templates/public-route-fallback";
-import { media } from "../data/media";
-import { fetchSearchOptions, type SearchOption } from "../features/cases/public-data.client";
+import { fetchPublishedCases, fetchSearchOptions, type SearchOption } from "../features/cases/public-data.client";
+import type { CaseStudy } from "../features/cases/types";
 import type { Route } from "./+types/home";
 
 export function loader() {
-  return { categories: [] as SearchOption[], styles: [] as SearchOption[] };
+  return { categories: [] as SearchOption[], styles: [] as SearchOption[], cases: [] as CaseStudy[], loadError: false };
 }
-
 export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
-  const serverDataPromise = serverLoader();
-  try {
-    const [serverData, options] = await Promise.all([serverDataPromise, fetchSearchOptions()]);
-    return { ...serverData, ...options };
-  } catch (error) {
-    console.error("Failed to load search options", error);
-    return serverDataPromise;
-  }
+  const [serverData, options, cases] = await Promise.all([serverLoader(), fetchSearchOptions().catch(() => ({ categories: [], styles: [] })), fetchPublishedCases(6).then(items => ({ items, error: false }), () => ({ items: [] as CaseStudy[], error: true }))]);
+  return { ...serverData, ...options, cases: cases.items, loadError: cases.error };
 }
-
 clientLoader.hydrate = true as const;
-
-export function HydrateFallback() {
-  return <PublicRouteFallback label="検索条件を読み込んでいます…" />;
-}
-
+export function HydrateFallback() { return <PublicRouteFallback label="施工事例を読み込んでいます…" />; }
 export function meta() {
-  return [
-    { title: "飯塚のリノベ" },
-    { name: "description", content: "飯塚エリアのリフォーム・リノベーション施工事例を検索できます。" },
-  ];
+  return [{ title: "飯塚のリノベ" }, { name: "description", content: "飯塚エリアのリフォーム・リノベーション施工事例を、写真と費用から探せます。" }];
 }
-
 export default function HomeRoute({ loaderData }: Route.ComponentProps) {
-  return (
-    <PublicLayout>
-      <div className={ui["public-page"] + " " + ui["home-page"]}>
-        <section className={ui["home-hero"]}>
-          <img className={ui["home-hero__image"]} src={media.house} alt="" width={1200} height={675} fetchPriority="high" />
-          <div>
-            <h1>飯塚で理想のリフォーム＆<br />リノベーション</h1>
-          </div>
-        </section>
+  return <PublicLayout>
+    <div className={ui["public-page"] + " " + ui["home-page"]}>
+      <header className={ui["page-heading"]}>
+        <h1>施工事例</h1>
+      </header>
+      <section className={ui["home-cases"]} aria-labelledby="home-cases-title">
+        <div className={ui["section-header"]}><h2 id="home-cases-title">新着</h2><Link to="/search">すべての事例を見る</Link></div>
+        {loaderData.cases.length ? <CaseGrid items={loaderData.cases} /> : <p className={ui["home-notice"]} role={loaderData.loadError ? "alert" : undefined}>{loaderData.loadError ? "施工事例を読み込めませんでした。施工事例の一覧からもう一度お試しください。" : "施工事例はまだ公開されていません。掲載されると、ここから写真や費用を確認できます。"}</p>}
+      </section>
+      <section className={ui["home-search"]} aria-labelledby="home-search-title">
+        <h2 id="home-search-title">直したい場所や予算から探す</h2>
         <HomeFilters categories={loaderData.categories} styles={loaderData.styles} />
-        <section className={ui["home-guide"]} aria-labelledby="home-guide-title">
-          <div className={ui["home-section-heading"]}>
-            <p>はじめての方へ</p>
-            <h2 id="home-guide-title">希望に合う事例と企業を見つける3ステップ</h2>
-          </div>
-          <ul className={ui["home-guide__steps"]}>
-            <li>
-              <span className={ui["home-guide__number"]}>1.</span>
-              <div>
-                <h3>条件から探す</h3>
-                <p>場所や予算、こだわりから施工事例を絞り込みます。</p>
-              </div>
-            </li>
-            <li>
-              <span className={ui["home-guide__number"]}>2.</span>
-              <div>
-                <h3>事例と企業を比べる</h3>
-                <p>気になる事例を保存し、施工企業の情報を確認します。</p>
-              </div>
-            </li>
-            <li>
-              <span className={ui["home-guide__number"]}>3.</span>
-              <div>
-                <h3>企業へ相談する</h3>
-                <p>問い合わせ先を選び、施工や見積もりについて相談します。</p>
-              </div>
-            </li>
-          </ul>
-          <div className={ui["home-guide__actions"]}><Link className={ui["button"] + " " + ui["button--primary"]} to="/search">施工事例を探す</Link><Link className={ui["button"] + " " + ui["button--secondary"]} to="/companies">企業を探す</Link></div>
-        </section>
-      </div>
-    </PublicLayout>
-  );
+      </section>
+      <section className={ui["home-company-link"]}>
+        <h2>施工会社から探す</h2>
+        <Link className={ui.button + " " + ui["button--secondary"]} to="/companies">施工会社を見る</Link>
+      </section>
+    </div>
+  </PublicLayout>;
 }

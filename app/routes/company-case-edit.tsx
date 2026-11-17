@@ -250,7 +250,7 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
             <Field label="費用下限（円）"><input name="priceMin" type="number" min="0" max="2147483647" defaultValue={loaderData.item.priceMin ?? ""} /></Field>
             <Field label="費用上限（円）"><input name="priceMax" type="number" min="0" max="2147483647" defaultValue={loaderData.item.priceMax ?? ""} /></Field>
           </div>
-          <Field label="概要"><textarea name="summary" maxLength={2000} rows={4} defaultValue={loaderData.item.summary} /></Field>
+          <Field label="工事の内容" hint="改修前の困り事、変更した点、費用に含まれる工事を記載してください。写真の場所や施工前後の説明も添えると伝わります。"><textarea name="summary" maxLength={2000} rows={4} defaultValue={loaderData.item.summary} /></Field>
           <Field label="公開状態"><select name="status" defaultValue={loaderData.item.status ?? "DRAFT"}><option value="DRAFT">下書き</option><option value="PUBLISHED">公開</option><option value="ARCHIVED">非公開（アーカイブ）</option></select></Field>
           <fieldset className={ui["choice-list"]}><legend>リノベーション箇所</legend>{loaderData.categories.map((category) => <label key={category.id}><input type="checkbox" name="categoryIds" value={category.id} defaultChecked={loaderData.selectedCategoryIds.includes(category.id)} />{category.name}{!category.is_active ? "（現在は非表示）" : ""}</label>)}</fieldset>
           <fieldset className={ui["choice-list"]}><legend>こだわり条件</legend>{loaderData.styles.map((style) => <label key={style.id}><input type="checkbox" name="styleIds" value={style.id} defaultChecked={loaderData.selectedStyleIds.includes(style.id)} />{style.name}{!style.is_active ? "（現在は非表示）" : ""}</label>)}</fieldset>

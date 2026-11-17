@@ -1,10 +1,10 @@
 import ui from "../ui.module.css";
 import type { Route } from "./+types/search";
 import { Pagination } from "../components/molecules";
-import { Link, useNavigation } from "react-router";
+import { Link, useNavigation, useSearchParams } from "react-router";
 import { formatPriceRange } from "../features/cases/format";
 import { CaseList } from "../components/organisms";
-import { SearchFilters } from "../components/organisms/filters";
+import { SearchFilters, SearchSort } from "../components/organisms/filters";
 import { PublicLayout } from "../components/templates/public-layout";
 import { hasInvalidPriceRange, parseSearchParams } from "../features/search/schema";
 import { fetchSearchOptions, searchPublishedCases, type SearchOption } from "../features/cases/public-data.client";
@@ -61,11 +61,20 @@ export function HydrateFallback() {
 export default function SearchRoute({ loaderData }: Route.ComponentProps) {
   const navigation = useNavigation();
   const { filters } = loaderData;
-  const conditions = [filters.q && `キーワード：${filters.q}`, filters.area && `地域：${filters.area}`,
-    filters.category && `箇所：${loaderData.categories.find((item) => item.slug === filters.category)?.name ?? filters.category}`,
-    filters.style && `条件：${loaderData.styles.find((item) => item.slug === filters.style)?.name ?? filters.style}`,
-    (filters.priceMin !== undefined || filters.priceMax !== undefined) && `予算：${formatPriceRange(filters.priceMin ?? null, filters.priceMax ?? null)}`,
-    filters.period && `${filters.period}か月以内`].filter(Boolean);
+  const [searchParams] = useSearchParams();
+  const conditions = [
+    { keys: ["q"], label: filters.q && `キーワード：${filters.q}` },
+    { keys: ["area"], label: filters.area && `地域：${filters.area}` },
+    { keys: ["category"], label: filters.category && `箇所：${loaderData.categories.find(item => item.slug === filters.category)?.name ?? filters.category}` },
+    { keys: ["style"], label: filters.style && `条件：${loaderData.styles.find(item => item.slug === filters.style)?.name ?? filters.style}` },
+    { keys: ["priceMin", "priceMax", "budgetMin", "budgetMax"], label: (filters.priceMin !== undefined || filters.priceMax !== undefined) && `予算：${formatPriceRange(filters.priceMin ?? null, filters.priceMax ?? null)}` },
+    { keys: ["period"], label: filters.period && `施工期間：${filters.period}か月以内` },
+  ].filter(condition => condition.label);
+  function without(keys: string[]) {
+    const params = new URLSearchParams(searchParams);
+    for (const key of [...keys, "page"]) params.delete(key);
+    return `/search?${params}`;
+  }
   return (
     <PublicLayout>
       <div className={ui["public-page"] + " " + ui["search-page"]}>
@@ -78,7 +87,8 @@ export default function SearchRoute({ loaderData }: Route.ComponentProps) {
               {loaderData.invalidPriceRange || loaderData.loadError ? null : <p role="status">{loaderData.total}件の施工事例が見つかりました</p>}
               {navigation.state !== "idle" ? <p role="status">検索中…</p> : null}
             </div>
-            {conditions.length ? <div className={ui["active-filters"]} aria-label="適用中の検索条件">{conditions.map((condition) => <span className={ui["tag"]} key={String(condition)}>{condition}</span>)}<Link to="/search">条件をクリア</Link></div> : null}
+            <SearchSort value={filters.sort} />
+            {conditions.length ? <div className={ui["active-filters"]} aria-label="適用中の検索条件">{conditions.map(condition => <Link className={ui["filter-chip"]} key={condition.keys[0]} to={without(condition.keys)} aria-label={`${condition.label}を解除`}>{condition.label}<span aria-hidden="true">×</span></Link>)}<Link to="/search">条件をクリア</Link></div> : null}
             {loaderData.loadError ? (
               <p className={ui["form-error"]} role="alert">検索結果を取得できませんでした。時間をおいて再度お試しください。</p>
             ) : loaderData.invalidPriceRange ? (
@@ -93,7 +103,7 @@ export default function SearchRoute({ loaderData }: Route.ComponentProps) {
                 {loaderData.filters.q || loaderData.filters.area || loaderData.filters.category || loaderData.filters.style || loaderData.filters.priceMin !== undefined || loaderData.filters.priceMax !== undefined || loaderData.filters.period ? (
                   <><h2>該当する施工事例がありません</h2><p>条件を変更するか、<Link to="/search">条件をクリア</Link>して検索してください。</p></>
                 ) : (
-                  <><h2>公開中の施工事例がありません</h2><p>施工事例が公開されるまでお待ちください。</p></>
+                  <><h2>公開中の施工事例がありません</h2><p>施工会社の情報からも探せます。</p><Link className={ui.button + " " + ui["button--secondary"]} to="/companies">施工会社を見る</Link></>
                 )}
               </div>
             )}

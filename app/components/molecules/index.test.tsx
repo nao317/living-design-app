@@ -21,14 +21,15 @@ const caseItem = {
 };
 
 describe("FavoriteButton", () => {
-  it("未ログイン時は元の画面を保持してログインへ案内する", async () => {
-    const router = createMemoryRouter([{ path: "/", element: <FavoriteButton caseId="case-id" /> }, { path: "/login", element: <h1>ログイン</h1> }], { initialEntries: ["/?area=飯塚"] });
+  it("未ログインでも画面を離れずに保存を操作できる", async () => {
+    const action = vi.fn(() => ({ saved: true, error: "" }));
+    const router = createMemoryRouter([{ path: "/", element: <FavoriteButton caseId="case-id" /> }, { path: "/favorites/update", action }], { initialEntries: ["/?area=飯塚"] });
     render(<RouterProvider router={router} />);
-    const link = screen.getByRole("link", { name: "ログインしてお気に入りに追加" });
-    expect(link).toHaveAttribute("href", "/login?redirectTo=%2F%3Farea%3D%E9%A3%AF%E5%A1%9A");
-    fireEvent.click(link);
-    await waitFor(() => expect(router.state.location.pathname).toBe("/login"));
-    expect(new URLSearchParams(router.state.location.search).get("redirectTo")).toBe("/?area=飯塚");
+    fireEvent.click(screen.getByRole("button", { name: "お気に入りに追加" }));
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1));
+    expect(router.state.location.pathname).toBe("/");
+    expect(new URLSearchParams(router.state.location.search).get("area")).toBe("飯塚");
+    expect(screen.queryByRole("link", { name: /ログイン/ })).not.toBeInTheDocument();
   });
   it("保存済み状態を表示し、保存失敗を成功として表示しない", async () => {
     state.authorization = { userId: "user", accountRole: "GENERAL" };

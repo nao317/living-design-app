@@ -19,3 +19,12 @@ describe("search parameters", () => {
     expect(hasInvalidPriceRange(filters)).toBe(true);
   });
 });
+
+it("万円の小数を円へ変換し、既存の円単位URLも維持する", () => {
+  expect(parseSearchParams(new URLSearchParams("budgetMin=12.5&budgetMax=300"))).toMatchObject({ priceMin: 125000, priceMax: 3000000 });
+  expect(parseSearchParams(new URLSearchParams("priceMin=100&priceMax=300"))).toMatchObject({ priceMin: 100, priceMax: 300 });
+  const empty = parseSearchParams(new URLSearchParams("budgetMin=&budgetMax="));
+  expect(empty.priceMin).toBeUndefined();
+  expect(empty.priceMax).toBeUndefined();
+  expect(hasInvalidPriceRange(parseSearchParams(new URLSearchParams("budgetMin=300&budgetMax=100")))).toBe(true);
+});

@@ -1,4 +1,4 @@
-.empty { display: grid; min-height: 180px; place-items: center; border: 1px dashed #bcc7be; border-radius: 8px; background: #fbfcfb; padding: 32px 20px; text-align: center; }
+.empty { display: grid; min-height: 180px; place-items: center; border-block: 1px solid var(--line); background: transparent; padding: 32px 20px; text-align: center; }
 .inner { display: grid; max-width: 520px; justify-items: center; gap: 8px; }
 .title { margin: 0; font-size: 17px; }
 .description { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }

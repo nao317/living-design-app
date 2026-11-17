@@ -1,17 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { describe, expect, it } from "vitest";
-import { SearchFilters } from "./filters";
+import { SearchFilters, SearchSort } from "./filters";
 
 describe("SearchFilters", () => {
   it("restores combined URL conditions and uses all supplied master options", () => {
     const router = createMemoryRouter([{
       path: "/",
-      element: <SearchFilters
+      element: <><SearchFilters
           filters={{ q: "収納", area: "飯塚", category: "interior", style: "natural", priceMin: 100, priceMax: 300, period: "3", sort: "price_asc", page: 2 }}
           categories={[{ slug: "interior", name: "内装" }]}
           styles={[{ slug: "natural", name: "自然素材" }]}
-        />,
+        /><SearchSort value="price_asc" /></>,
     }]);
     render(<RouterProvider router={router} />);
 
@@ -20,8 +20,8 @@ describe("SearchFilters", () => {
     expect(screen.getByRole("combobox", { name: "リノベーション箇所" })).toHaveValue("interior");
     expect(screen.getByRole("combobox", { name: "こだわり条件" })).toHaveValue("natural");
     expect(screen.getByRole("combobox", { name: "並び順" })).toHaveValue("price_asc");
-    expect(screen.getByRole("spinbutton", { name: "予算下限（円）" })).toHaveValue(100);
-    expect(screen.getByRole("spinbutton", { name: "予算上限（円）" })).toHaveValue(300);
+    expect(screen.getByRole("spinbutton", { name: "予算下限（万円）" })).toHaveValue(0.01);
+    expect(screen.getByRole("spinbutton", { name: "予算上限（万円）" })).toHaveValue(0.03);
     expect(screen.getByRole("option", { name: "内装" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "自然素材" })).toBeInTheDocument();
   });

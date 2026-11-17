@@ -149,7 +149,7 @@ export default function CompanyCaseNewRoute({ loaderData, actionData }: Route.Co
             <Field label="費用下限（円）"><input name="priceMin" type="number" min="0" max="2147483647" inputMode="numeric" /></Field>
             <Field label="費用上限（円）"><input name="priceMax" type="number" min="0" max="2147483647" inputMode="numeric" /></Field>
           </div>
-          <Field label="概要"><textarea name="summary" rows={5} maxLength={2000} /></Field>
+          <Field label="工事の内容" hint="改修前の困り事、変更した点、費用に含まれる工事を記載してください。写真の場所や施工前後の説明も添えると伝わります。"><textarea name="summary" rows={5} maxLength={2000} /></Field>
           <fieldset className={ui["choice-list"]}><legend>リノベーション箇所</legend>{loaderData.categories.map((category) => <label key={category.id}><input type="checkbox" name="categoryIds" value={category.id} />{category.name}</label>)}</fieldset>
           <fieldset className={ui["choice-list"]}><legend>こだわり条件</legend>{loaderData.styles.map((style) => <label key={style.id}><input type="checkbox" name="styleIds" value={style.id} />{style.name}</label>)}</fieldset>
           <label className={ui["choice-list"]}><input type="checkbox" name="publish" />登録後に公開する</label>

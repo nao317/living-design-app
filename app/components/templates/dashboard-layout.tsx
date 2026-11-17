@@ -24,7 +24,7 @@ export function DashboardLayout({ children, type = "user" }: { children: ReactNo
       if (event.key === "Escape") { event.preventDefault(); setOpen(false); return; }
       if (event.key !== "Tab") return;
       const drawer = document.getElementById(sidebarId);
-      const targets = [...(drawer?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? []), menuButton.current].filter((target): target is HTMLElement => Boolean(target));
+      const targets = [...(drawer?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? [])];
       const current = targets.indexOf(document.activeElement as HTMLElement);
       const next = event.shiftKey ? (current <= 0 ? targets.length - 1 : current - 1) : (current + 1) % targets.length;
       event.preventDefault();
