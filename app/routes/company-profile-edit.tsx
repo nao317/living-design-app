@@ -18,7 +18,9 @@ import { StorageImage } from "../features/media/storage-image";
 const profileSchema = z.object({
   name: z.string().trim().min(1).max(120),
   email: z.email().or(z.literal("")),
-  founded: z.string().trim(),
+  founded: z.string().trim().transform(value => value.normalize("NFKC"))
+    .refine(value => /^(?:[1-9][0-9]{3}年?)?$/.test(value), "設立年は西暦4桁で入力してください（例：2018）。月日は入力しないでください。")
+    .transform(value => value ? Number(value.replace(/年$/, "")) : null),
   phone: z.string().trim().max(40),
   website: z.url().or(z.literal("")),
   address: z.string().trim().max(200),
@@ -40,7 +42,6 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   if (!result.success) return data({ error: "入力内容を確認してください。", fieldErrors: validationErrors(result.error) }, { status: 400 });
 
   if (isSupabaseConfigured()) {
-    const foundedYear = result.data.founded.replace(/[^0-9]/g, "");
     const supabase = getSupabaseBrowserClient();
     const { data: currentCompany, error: currentCompanyError } = await supabase.from("companies")
       .select("logo_path, cover_image_path")
@@ -75,7 +76,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     const { error } = await supabase.from("companies").update({
         name: result.data.name,
         email: result.data.email,
-        founded_year: foundedYear ? Number(foundedYear) : null,
+        founded_year: result.data.founded,
         phone: result.data.phone,
         website_url: result.data.website || null,
         address: result.data.address,
@@ -130,7 +131,7 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
       }),
       name: record.name,
       email: record.email,
-      founded: record.founded_year ? `${record.founded_year}年` : "",
+      founded: record.founded_year ? String(record.founded_year) : "",
       phone: record.phone,
       website: record.website_url ?? "",
       address: record.address,
@@ -180,7 +181,7 @@ export default function CompanyProfileEditRoute({ loaderData, actionData }: Rout
           <div className={ui["form-grid"]}>
             <Field label="企業名"><input name="name" autoComplete="organization" required maxLength={120} defaultValue={loaderData.company.name} /></Field>
             <Field label="問い合わせ先メールアドレス"><input name="email" type="email" autoComplete="email" spellCheck={false} defaultValue={loaderData.company.email} /></Field>
-            <Field label="設立年"><input name="founded" defaultValue={loaderData.company.founded} /></Field>
+            <Field label="設立年" hint="西暦4桁（例：2018）。月日は入力不要です。"><input name="founded" inputMode="numeric" pattern="[0-9０-９]{4}年?" defaultValue={loaderData.company.founded} /></Field>
             <Field label="電話番号"><input name="phone" type="tel" autoComplete="tel" defaultValue={loaderData.company.phone} /></Field>
             <Field label="ホームページ"><input name="website" type="url" autoComplete="url" defaultValue={loaderData.company.website} /></Field>
             <Field label="所在地"><input name="address" autoComplete="street-address" defaultValue={loaderData.company.address} /></Field>
