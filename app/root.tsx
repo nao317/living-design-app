@@ -22,7 +22,6 @@ export function meta() {
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
-  { rel: "preconnect", href: "https://images.unsplash.com" },
   {
     rel: "preconnect",
     href: "https://fonts.gstatic.com",

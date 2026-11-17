@@ -31,7 +31,7 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
   return error ? { error: "施工事例を削除できませんでした。" } : { saved: true };
 }
 export default function AdminCasesRoute({ loaderData, actionData }: Route.ComponentProps) {
-  return <DashboardLayout type="admin"><PageHeader eyebrow="管理" title="施工事例" description="全企業の施工事例と公開状態を管理します。" actions={<Link className={ui.button + " " + ui["button--secondary"]} to="/search">公開一覧を見る</Link>} />
+  return <DashboardLayout type="admin"><PageHeader title="施工事例" description="全企業の施工事例と公開状態を管理します。" actions={<Link className={ui.button + " " + ui["button--secondary"]} to="/search">公開一覧を見る</Link>} />
     {actionData && "error" in actionData ? <p className={ui["form-error"]} role="alert">{actionData.error}</p> : null}
     {loaderData.items.length ? <><DataTable caption="施工事例一覧" headers={["タイトル", "状態", "企業ID", "操作"]}>{loaderData.items.map((item) => <tr key={item.id}><td><strong>{item.title}</strong></td><td><StatusBadge tone={item.status === "PUBLISHED" ? "success" : item.status === "DRAFT" ? "warning" : "neutral"}>{statusLabel[item.status] ?? item.status}</StatusBadge></td><td>{item.company_id}</td><td><div className={dataTableStyles.actions}><Link className={ui.button + " " + ui["button--secondary"]} to={`/admin/cases/${item.id}/edit`}>編集</Link><InlineActionForm confirmMessage={`「${item.title}」を削除しますか？この操作は取り消せません。`}>{({ pending }) => <><input type="hidden" name="caseId" value={item.id} /><PendingActionButton pending={pending} pendingLabel="削除中…" variant="danger">削除</PendingActionButton></>}</InlineActionForm></div></td></tr>)}</DataTable><Pagination totalItems={loaderData.total} currentPage={loaderData.page} pageSize={pageSize} /></> : <EmptyState title="施工事例はありません" />}
   </DashboardLayout>;

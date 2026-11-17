@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const pages = [
-  ["/", "飯塚で理想のリフォーム＆"],
+  ["/", "施工事例"],
   ["/search", "検索結果"],
   ["/companies", "企業を探す"],
   ["/contact", "お問い合わせ"],
@@ -11,7 +11,6 @@ const pages = [
 
 const protectedPages = [
   "/mypage",
-  "/mypage/favorites",
   "/company/apply",
   "/company",
   "/company/cases",
@@ -37,7 +36,7 @@ test("検索条件を組み合わせてURLとフォームに保持する", async
   await page.goto("/search", { waitUntil: "domcontentloaded" });
   await page.getByRole("textbox", { name: "キーワード" }).fill("キッチン");
   await page.getByRole("textbox", { name: "施工地域" }).fill("飯塚");
-  await page.getByRole("button", { name: "検索する" }).click();
+  await page.getByRole("button", { name: "事例を検索する" }).click();
 
   await expect(page).toHaveURL(/q=%E3%82%AD%E3%83%83%E3%83%81%E3%83%B3/);
   await expect(page).toHaveURL(/area=%E9%A3%AF%E5%A1%9A/);
@@ -101,7 +100,8 @@ test("スマホではメニューが画面左からスライドインする", as
 
   expect(menuBox).not.toBeNull();
   expect(brandBox).not.toBeNull();
-  expect(brandBox!.x).toBeLessThan(menuBox!.x);
+  expect(menuBox!.x).toBeLessThanOrEqual(20);
+  expect(menuBox!.x).toBeLessThan(brandBox!.x);
   await expect(brand).toContainText("飯塚のリノベ");
 
   const closedOffset = await page.locator("#site-navigation").evaluate((element) => new DOMMatrix(getComputedStyle(element).transform).m41);

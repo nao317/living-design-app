@@ -9,11 +9,12 @@ vi.mock("../lib/supabase.client", () => ({ getSupabaseBrowserClient: () => ({ fr
   const query = { eq: (name: string, value: string) => { state.eq(name, value); return query; }, then: (resolve: (value: unknown) => void) => resolve({ error: state.error }) };
   return { upsert: async (...args: unknown[]) => { state.write(...args); return { error: state.error }; }, delete: () => query };
 } }) }));
+import { readGuestFavorites } from "../features/favorites/guest-favorites.client";
 import { clientAction } from "./favorite-update";
 
 const caseId = "22222222-2222-4222-8222-222222222222";
 function request(saved: boolean, id = caseId) { return { request: new Request("http://localhost/favorites/update", { method: "POST", body: new URLSearchParams({ caseId: id, saved: String(saved) }) }) } as Parameters<typeof clientAction>[0]; }
-beforeEach(() => { state.role = "GENERAL"; state.error = null; vi.clearAllMocks(); });
+beforeEach(() => { state.role = "GENERAL"; state.error = null; vi.clearAllMocks(); localStorage.clear(); });
 it("ログイン中の利用者と事例を保存する", async () => {
   expect(await clientAction(request(true))).toMatchObject({ caseId, saved: true, error: "" });
   expect(state.write).toHaveBeenCalledWith({ user_id: "11111111-1111-4111-8111-111111111111", case_id: caseId }, { onConflict: "user_id,case_id", ignoreDuplicates: true });
@@ -36,11 +37,18 @@ it("不正な事例IDと権限のないアカウントでは保存しない", as
   state.role = "COMPANY";
   await expect(clientAction(request(true))).rejects.toHaveProperty("status", 404);
 });
-it("ログイン期限が切れても操作していた画面へ戻れる", async () => {
+it("未ログイン時は端末に保存し、再操作で解除する", async () => {
   state.role = "ANONYMOUS";
-  const args = { request: new Request("http://localhost/favorites/update", { method: "POST", body: new URLSearchParams({ caseId, saved: "true", redirectTo: `/cases/${caseId}` }) }) } as Parameters<typeof clientAction>[0];
-  try { await clientAction(args); throw new Error("Expected redirect"); } catch (error) {
-    expect(error).toBeInstanceOf(Response);
-    expect((error as Response).headers.get("Location")).toBe(`/login?redirectTo=${encodeURIComponent(`/cases/${caseId}`)}`);
-  }
+  expect(await clientAction(request(true))).toMatchObject({ saved: true, error: "" });
+  expect(readGuestFavorites()).toEqual([caseId]);
+  expect(state.write).not.toHaveBeenCalled();
+  await clientAction(request(false));
+  expect(readGuestFavorites()).toEqual([]);
+});
+it("端末に保存できない場合に成功を表示しない", async () => {
+  state.role = "ANONYMOUS";
+  const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new Error("quota"); });
+  const result = await clientAction(request(true));
+  expect(result).toMatchObject({ data: { error: expect.any(String) } });
+  setItem.mockRestore();
 });

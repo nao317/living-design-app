@@ -1,4 +1,4 @@
-import { Building2, FileCheck2, Files, Heart, Home, Mail, PencilLine, Plus, Search, Tags, Users } from "lucide-react";
+import { X, Building2, FileCheck2, Files, Heart, Home, Mail, PencilLine, Plus, Search, Tags, Users } from "lucide-react";
 import { NavLink, useLocation } from "react-router";
 import styles from "./sidebar.module.css";
 
@@ -43,8 +43,8 @@ export function Sidebar({ type = "user", open = false, id, onNavigate }: { type?
   const location = useLocation();
   const label = type === "company" ? "企業管理" : type === "admin" ? "管理者メニュー" : "マイページ";
   return (
-    <aside id={id} className={`${styles.sidebar} ${open ? styles.open : ""}`.trim()} aria-label={label}>
-      <p className={styles.heading}>{label}</p>
+    <aside id={id} className={`${styles.sidebar} ${open ? styles.open : ""}`.trim()} aria-label={label} role={open ? "dialog" : undefined} aria-modal={open ? true : undefined}>
+      <div className={styles.headingRow}><p className={styles.heading}>{label}</p><button className={styles.close} type="button" aria-label="サイドバーを閉じる" onClick={onNavigate}><X aria-hidden="true" size={20} /></button></div>
       <nav>
         {navigation[type].map((group) => <section className={styles.group} key={group.label} aria-labelledby={`${type}-${group.label}`}>
           <span className={styles.groupLabel} id={`${type}-${group.label}`}>{group.label}</span>

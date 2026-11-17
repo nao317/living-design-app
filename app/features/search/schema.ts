@@ -20,7 +20,14 @@ export const searchParamsSchema = z.object({
 export type SearchParams = z.infer<typeof searchParamsSchema>;
 
 export function parseSearchParams(params: URLSearchParams): SearchParams {
-  return searchParamsSchema.parse(Object.fromEntries(params));
+  const values = Object.fromEntries(params);
+  for (const [budget, price] of [["budgetMin", "priceMin"], ["budgetMax", "priceMax"]]) {
+    if (!(price in values) && values[budget]?.trim()) {
+      const amount = Number(values[budget]);
+      values[price] = Number.isFinite(amount) && amount >= 0 ? String(Math.round(amount * 10000)) : "";
+    }
+  }
+  return searchParamsSchema.parse(values);
 }
 
 export function hasInvalidPriceRange(filters: SearchParams) {

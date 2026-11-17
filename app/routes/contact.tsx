@@ -7,8 +7,10 @@ import { ManagedForm, SubmitButton } from "../features/forms/managed-form";
 import { validationErrors } from "../features/forms/validation";
 import { Field } from "../components/molecules";
 import { PublicLayout } from "../components/templates/public-layout";
-import { fetchPublishedCompanyContacts } from "../features/cases/public-data.client";
+import { fetchPublishedCompanyContacts, fetchCaseById } from "../features/cases/public-data.client";
 import { createContactMessage } from "../features/contact/messages.server";
+import type { CaseStudy } from "../features/cases/types";
+import { StorageImage } from "../features/media/storage-image";
 import { PublicRouteFallback } from "../components/templates/public-route-fallback";
 
 const contactSchema = z.object({
@@ -27,6 +29,7 @@ export function meta() { return [{ title: "お問い合わせ | 飯塚のリノ�
 export function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
   return {
+    selectedCase: null as CaseStudy | null,
     companies: [] as Array<{ id: string; name: string }>,
     selectedCompanyId: url.searchParams.get("companyId") ?? "",
     caseId: url.searchParams.get("caseId") ?? "",
@@ -35,10 +38,8 @@ export function loader({ request }: Route.LoaderArgs) {
 
 export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
   const [serverData, companies] = await Promise.all([serverLoader(), fetchPublishedCompanyContacts()]);
-  return {
-    ...serverData,
-    companies,
-  };
+  const selectedCase = serverData.caseId ? await fetchCaseById(serverData.caseId).catch(() => null) : null;
+  return { ...serverData, companies, selectedCase: selectedCase?.companyId === serverData.selectedCompanyId ? selectedCase : null };
 }
 
 clientLoader.hydrate = true as const;
@@ -102,7 +103,7 @@ export async function action({ request }: Route.ActionArgs) {
 export default function ContactRoute({ loaderData, actionData }: Route.ComponentProps) {
   const [selection, setSelection] = useState({ source: loaderData.selectedCompanyId, value: loaderData.selectedCompanyId });
   const selectedCompanyId = selection.source === loaderData.selectedCompanyId ? selection.value : loaderData.selectedCompanyId;
-  const selectedCompany = loaderData.companies.find((company) => company.id === selectedCompanyId);
+  const selectedCase = loaderData.selectedCase?.companyId === selectedCompanyId ? loaderData.selectedCase : null;
 
   return (
     <PublicLayout>
@@ -132,8 +133,11 @@ export default function ContactRoute({ loaderData, actionData }: Route.Component
                   {loaderData.companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
                 </select>
               </Field>
-              <p className={ui["recipient-preview"]} role="status">{selectedCompany ? `送信先：${selectedCompany.name}` : "送信先の企業を選択してください。"}</p>
-              {loaderData.caseId ? <input type="hidden" name="caseId" value={loaderData.caseId} /> : null}
+              {selectedCase ? <div className={ui["contact-case"]}>
+                <input type="hidden" name="caseId" value={selectedCase.id} />
+                {selectedCase.image ? <StorageImage width={120} height={90} src={selectedCase.image} storagePath={selectedCase.imagePath} bucket="case-images" alt="" /> : null}
+                <div><span>この事例について相談</span><Link to={`/cases/${selectedCase.id}`}>{selectedCase.title}</Link><p>費用目安：{selectedCase.price}</p></div>
+              </div> : null}
               <Field label="お名前">
                 <input name="name" autoComplete="name" required maxLength={80} />
               </Field>
@@ -147,8 +151,8 @@ export default function ContactRoute({ loaderData, actionData }: Route.Component
                   <option value="other">その他（選択した企業へのご相談）</option>
                 </select>
               </Field>
-              <Field label="お問い合わせ内容" hint="10文字以上、2,000文字以内で入力してください。">
-                <textarea name="message" required minLength={10} maxLength={2000} />
+              <Field label="お問い合わせ内容" hint="直したい場所、現在困っていること、希望時期などをお書きください。まだ決まっていない項目は省略できます（10〜2,000文字）。">
+                <textarea name="message" required minLength={10} maxLength={2000} placeholder="例：キッチンの収納が足りず、改修を考えています。まずは工事の範囲や費用を相談したいです。" />
               </Field>
               <SubmitButton pendingLabel="送信中…">送信する</SubmitButton>
               <p className={ui["form-hint"]}>送信内容は選択した企業へ共有され、入力したメールアドレス宛てに返信されます。</p>
@@ -156,14 +160,8 @@ export default function ContactRoute({ loaderData, actionData }: Route.Component
           )}
         </section>
 
-        <section className={ui["contact-guidance"]}>
-          <h2>企業へ直接相談したい方</h2>
-          <p>
-            <Link to="/companies">企業を探す</Link>
-            から企業を選ぶと、問い合わせ先を指定できます。
-          </p>
-        </section>
-        <section className={ui["contact-guidance"]}><h2>会員登録・ログインについて</h2><p><Link to="/signup">新規登録</Link>、<Link to="/login">ログイン</Link>、<Link to="/forgot-password">パスワードの再設定</Link>をご利用ください。</p></section>
+
+
       </div>
     </PublicLayout>
   );

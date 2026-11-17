@@ -10,7 +10,7 @@ export function Header() {
   const [logoutError, setLogoutError] = useState("");
   const navigate = useNavigate();
   const location = useLocation();
-  const dashboardRoute = /^\/(admin|company|mypage)(\/|$)/.test(location.pathname);
+  const dashboardRoute = /^\/(admin|company|mypage)(\/|$)/.test(location.pathname) && !(location.pathname === "/mypage/favorites" && !user);
   const menuButton = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLElement>(null);
 
@@ -74,6 +74,7 @@ export function Header() {
           <NavLink to="/search">施工事例を探す</NavLink>
           <NavLink to="/companies">企業を探す</NavLink>
           <NavLink to="/contact">お問い合わせ</NavLink>
+          {!authorization || authorization.accountRole === "GENERAL" ? <NavLink to="/mypage/favorites">保存した事例</NavLink> : null}
           {!auth.ready ? (
             <span className={ui["header-auth-loading"]} role="status"><span className={ui["spinner"]} aria-hidden="true" />確認中…</span>
           ) : user ? (
