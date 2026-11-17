@@ -19,6 +19,7 @@ type CaseRow = {
 };
 
 type SearchCaseRow = CaseRow & { published_at: string | null };
+type CaseImageRow = { case_id: string; storage_path: string; display_order: number; taken_on?: string | null; description?: string | null };
 let searchRpcUnavailable = false;
 
 type CompanyRow = {
@@ -106,9 +107,9 @@ async function fetchCasesByRows(rows: CaseRow[], includeGallery = false) {
       .in("id", companyIds)
       .neq("status", "SUSPENDED"),
     supabase.from("case_images")
-      .select("case_id, storage_path, display_order")
+      .select(includeGallery ? "case_id, storage_path, display_order, taken_on, description" : "case_id, storage_path, display_order")
       .in("case_id", rows.map((row) => row.id))
-      .order("display_order"),
+      .order("display_order").order("id"),
     supabase.from("case_categories")
       .select("case_id, categories(slug, name)")
       .in("case_id", rows.map((row) => row.id)),
@@ -121,9 +122,9 @@ async function fetchCasesByRows(rows: CaseRow[], includeGallery = false) {
   if (imageResult.error) throw imageResult.error;
   if (categoryResult.error) throw categoryResult.error;
   if (styleResult.error) throw styleResult.error;
-  const imagePaths = new Map<string, string[]>();
-  for (const image of imageResult.data ?? []) {
-    imagePaths.set(image.case_id, [...(imagePaths.get(image.case_id) ?? []), image.storage_path]);
+  const casePhotos = new Map<string, CaseImageRow[]>();
+  for (const image of (imageResult.data ?? []) as unknown as CaseImageRow[]) {
+    casePhotos.set(image.case_id, [...(casePhotos.get(image.case_id) ?? []), image]);
   }
   const categories = new Map<string, Array<{ slug: string; name: string }>>();
   for (const row of categoryResult.data ?? []) {
@@ -139,7 +140,8 @@ async function fetchCasesByRows(rows: CaseRow[], includeGallery = false) {
   return Promise.all(rows.map(async (row): Promise<CaseStudy | null> => {
     const company = companies.get(row.company_id);
     if (!company) return null;
-    const paths = (imagePaths.get(row.id) ?? []).slice(0, includeGallery ? undefined : 1);
+    const photos = (casePhotos.get(row.id) ?? []).slice(0, includeGallery ? undefined : 1);
+    const paths = photos.map(photo => photo.storage_path);
     const companyImagePath = company.logo_path ?? undefined;
     if (companyImagePath && !companyImageUrls.has(companyImagePath)) {
       companyImageUrls.set(companyImagePath, getSignedImageUrl("company-assets", companyImagePath, "thumbnail"));
@@ -148,8 +150,8 @@ async function fetchCasesByRows(rows: CaseRow[], includeGallery = false) {
       Promise.all(paths.map((path) => getSignedImageUrl("case-images", path, includeGallery ? "detail" : "card"))),
       companyImagePath ? companyImageUrls.get(companyImagePath)! : Promise.resolve(null),
     ]);
-    const signedImages = imageUrls.map((url, index) => ({ url, path: paths[index] }))
-      .filter((image): image is { url: string; path: string } => Boolean(image.url));
+    const signedImages = imageUrls.map((url, index) => ({ url, path: paths[index], photo: photos[index] }))
+      .filter((image): image is { url: string; path: string; photo: CaseImageRow } => Boolean(image.url));
     const images = signedImages.map((image) => image.url);
     const item = toCaseStudy(row, company, {
       categories: categories.get(row.id),
@@ -161,7 +163,7 @@ async function fetchCasesByRows(rows: CaseRow[], includeGallery = false) {
       ...item,
       image: images[0] ?? "",
       imagePath: signedImages[0]?.path,
-      ...(includeGallery ? { images, imagesPaths: signedImages.map((image) => image.path) } : {}),
+      ...(includeGallery ? { images, imagesPaths: signedImages.map((image) => image.path), photoDetails: signedImages.map(({ photo }) => ({ date: photo.taken_on ?? undefined, description: photo.description ?? undefined })) } : {}),
     };
   })).then((items) => items.filter((item): item is CaseStudy => item !== null));
 }

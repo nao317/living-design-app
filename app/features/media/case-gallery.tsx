@@ -3,19 +3,30 @@ import { ChevronLeft, ChevronRight, Images, Maximize2, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { StorageImage } from "./storage-image";
 
-export function CaseGallery({ images, paths = [], title }: { images: string[]; paths?: string[]; title: string }) {
+export function CaseGallery({ images, paths = [], title, details = [] }: { images: string[]; paths?: string[]; title: string; details?: Array<{ date?: string; description?: string }> }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [selected, setSelected] = useState(0);
   if (!images.length) return <div className={ui["image-empty"]}>施工写真の掲載はありません</div>;
+  const timeline = images.map((src, index) => ({ src, index, ...details[index] })).slice(1)
+    .sort((a, b) => (a.date ?? "9999-12-31").localeCompare(b.date ?? "9999-12-31") || a.index - b.index);
   function expand(index: number) { setSelected(index); dialog.current?.showModal(); }
   return <section className={ui["case-gallery"]} aria-label="施工写真">
     <button type="button" className={ui["photo-button"] + " " + ui["gallery-cover"]} aria-label="施工写真1を拡大" onClick={() => expand(0)}>
       <StorageImage width={1200} height={780} src={images[0]} storagePath={paths[0]} bucket="case-images" alt={`${title}の施工写真1`} loading="eager" fetchPriority="high" />
     </button>
     <div className={ui["gallery-caption"]}><span><Images size={16} aria-hidden="true" /><span className={ui["sr-only"]}>施工写真 </span>{images.length}枚</span><button type="button" className={ui["gallery-expand"]} onClick={() => expand(0)} aria-label="メイン写真を拡大"><Maximize2 size={15} aria-hidden="true" />拡大</button></div>
-    {images.length > 1 ? <div className={ui["gallery-thumbnails"]}>{images.slice(1).map((src, index) => <button type="button" key={paths[index + 1] ?? `${src}-${index}`} className={ui["photo-button"]} aria-label={`施工写真${index + 2}を拡大`} onClick={() => expand(index + 1)}>
-      <StorageImage width={180} height={120} src={src} storagePath={paths[index + 1]} bucket="case-images" alt={`${title}の施工写真${index + 2}`} loading="lazy" />
-    </button>)}</div> : null}
+    {timeline.length ? <section className={ui["case-timeline"]} aria-labelledby="case-timeline-heading">
+      <h2 id="case-timeline-heading">施工の記録</h2>
+      <ol>{timeline.map(({ src, index, date, description }) => <li key={paths[index] ?? `${src}-${index}`}>
+        <div className={ui["case-timeline__date"]}>{date ? <time dateTime={date}>{date.replace(/-/g, "/")}</time> : <span>日付未設定</span>}</div>
+        <figure>
+          <button type="button" className={ui["photo-button"]} aria-label={`施工写真${index + 1}を拡大`} onClick={() => expand(index)}>
+            <StorageImage width={1000} height={700} src={src} storagePath={paths[index]} bucket="case-images" alt={description || `${title}の施工写真${index + 1}`} loading="lazy" />
+          </button>
+          {description ? <figcaption>{description}</figcaption> : null}
+        </figure>
+      </li>)}</ol>
+    </section> : null}
     <dialog ref={dialog} className={ui["photo-dialog"]} aria-label={`${title}の施工写真を拡大表示`} onClick={event => { if (event.target === event.currentTarget) dialog.current?.close(); }} onKeyDown={event => {
       if (event.key === "ArrowLeft") { event.preventDefault(); setSelected(index => Math.max(0, index - 1)); }
       if (event.key === "ArrowRight") { event.preventDefault(); setSelected(index => Math.min(images.length - 1, index + 1)); }
