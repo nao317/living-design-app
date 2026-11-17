@@ -140,7 +140,7 @@ async function fetchCasesByRows(rows: CaseRow[], includeGallery = false) {
     const company = companies.get(row.company_id);
     if (!company) return null;
     const paths = (imagePaths.get(row.id) ?? []).slice(0, includeGallery ? undefined : 1);
-    const companyImagePath = company.cover_image_path ?? company.logo_path ?? undefined;
+    const companyImagePath = company.logo_path ?? undefined;
     if (companyImagePath && !companyImageUrls.has(companyImagePath)) {
       companyImageUrls.set(companyImagePath, getSignedImageUrl("company-assets", companyImagePath, "thumbnail"));
     }
@@ -329,7 +329,7 @@ export async function fetchCompanyById(companyId: string, page = 1, pageSize = 6
   if (error) throw error;
   if (!data) return null;
   const company = data as CompanyRow;
-  const companyImagePath = company.cover_image_path ?? company.logo_path;
+  const companyImagePath = company.logo_path;
   const [companyImage, cases] = await Promise.all([
     getSignedImageUrl("company-assets", companyImagePath, "detail"),
     fetchCasesByRows(casesResult.items),
@@ -459,8 +459,8 @@ export async function fetchManagedCompany(companyId: string, pagination: {
     founded: companyRow.founded_year ? `${companyRow.founded_year}年` : "",
     website: companyRow.website_url ?? "",
     businessHours: companyRow.business_hours,
-    image: await getSignedImageUrl("company-assets", companyRow.cover_image_path ?? companyRow.logo_path, "card") ?? "",
-    imagePath: companyRow.cover_image_path ?? companyRow.logo_path ?? undefined,
+    image: await getSignedImageUrl("company-assets", companyRow.logo_path, "card") ?? "",
+    imagePath: companyRow.logo_path ?? undefined,
     features: [],
   };
   const memberList: CompanyMember[] = members.map((member) => ({
