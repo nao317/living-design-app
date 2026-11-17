@@ -1,3 +1,4 @@
+import ui from "../../ui.module.css";
 import { useState } from "react";
 import { Form, Link } from "react-router";
 import type { SearchOption } from "../../features/cases/public-data.client";
@@ -18,7 +19,7 @@ type FilterFormProps = FilterOptions & {
 function FilterForm({ filters, categories = [], styles = [], presentation, onSubmitted }: FilterFormProps) {
   const home = presentation === "home";
   return (
-    <Form key={filters ? JSON.stringify(filters) : "home"} method="get" action="/search" onSubmit={onSubmitted} className={home ? "filters filters--home" : "filters"}>
+    <Form key={filters ? JSON.stringify(filters) : "home"} method="get" action="/search" onSubmit={onSubmitted} className={`${ui.filters} ${home ? ui["filters--home"] : ""}`.trim()}>
       <h2>絞り込み検索</h2>
       <label>キーワード<input name="q" autoComplete="off" defaultValue={filters?.q ?? ""} maxLength={100} placeholder="例：キッチン…" /></label>
       <label>施工地域<input name="area" autoComplete="off" defaultValue={filters?.area ?? ""} maxLength={120} placeholder="例：飯塚市…" /></label>
@@ -28,8 +29,8 @@ function FilterForm({ filters, categories = [], styles = [], presentation, onSub
           {categories.map((category) => <option key={category.slug} value={category.slug}>{category.name}</option>)}
         </select>
       </label>
-      <fieldset className="budget-field"><legend>予算（円）</legend>
-        <span className="range-fields"><input name="priceMin" type="number" min="0" max="2147483647" inputMode="numeric" autoComplete="off" defaultValue={filters?.priceMin ?? ""} aria-label="予算下限（円）" placeholder="例：100,000…" /><span className="range-separator" aria-hidden="true">〜</span><input name="priceMax" type="number" min="0" max="2147483647" inputMode="numeric" autoComplete="off" defaultValue={filters?.priceMax ?? ""} aria-label="予算上限（円）" placeholder="例：500,000…" /></span>
+      <fieldset className={ui["budget-field"]}><legend>予算（円）</legend>
+        <span className={ui["range-fields"]}><input name="priceMin" type="number" min="0" max="2147483647" inputMode="numeric" autoComplete="off" defaultValue={filters?.priceMin ?? ""} aria-label="予算下限（円）" placeholder="例：100,000…" /><span className={ui["range-separator"]} aria-hidden="true">〜</span><input name="priceMax" type="number" min="0" max="2147483647" inputMode="numeric" autoComplete="off" defaultValue={filters?.priceMax ?? ""} aria-label="予算上限（円）" placeholder="例：500,000…" /></span>
       </fieldset>
       <label>施工期間
         <select name="period" autoComplete="off" defaultValue={filters?.period ?? ""}>
@@ -53,13 +54,13 @@ function FilterForm({ filters, categories = [], styles = [], presentation, onSub
         </select>
       </label>
       <Button type="submit">検索する</Button>
-      <Link className="filter-clear" to="/search" onClick={onSubmitted}>条件をクリア</Link>
+      <Link className={ui["filter-clear"]} to="/search" onClick={onSubmitted}>条件をクリア</Link>
     </Form>
   );
 }
 
 export function HomeFilters({ categories, styles }: FilterOptions) {
-  return <section className="filter-panel filter-panel--home"><div className="filter-panel__content"><FilterForm presentation="home" categories={categories} styles={styles} /></div></section>;
+  return <section className={ui["filter-panel"] + " " + ui["filter-panel--home"]}><div className={ui["filter-panel__content"]}><FilterForm presentation="home" categories={categories} styles={styles} /></div></section>;
 }
 
 export function SearchFilters({ filters, categories, styles }: FilterOptions & { filters: SearchParams }) {
@@ -67,11 +68,11 @@ export function SearchFilters({ filters, categories, styles }: FilterOptions & {
   const count = [filters.q, filters.area, filters.category, filters.style, filters.priceMin !== undefined, filters.priceMax !== undefined, filters.period].filter(Boolean).length;
   const close = () => setOpen(false);
   return (
-    <section className={`filter-panel${open ? " is-open" : ""}`}>
-      <button type="button" className="filter-toggle button button--secondary" aria-expanded={open} aria-controls="search-filters" onClick={() => setOpen((current) => !current)}>
+    <section className={`${ui["filter-panel"]} ${open ? ui["is-open"] : ""}`.trim()}>
+      <button type="button" className={ui["filter-toggle"] + " " + ui["button"] + " " + ui["button--secondary"]} aria-expanded={open} aria-controls="search-filters" onClick={() => setOpen((current) => !current)}>
         {open ? `検索条件${count ? `（${count}件指定）` : ""}を閉じる` : count ? `検索条件（${count}件指定）` : "検索条件を指定"}
       </button>
-      <div id="search-filters" className="filter-panel__content">
+      <div id="search-filters" className={ui["filter-panel__content"]}>
         <FilterForm presentation="results" filters={filters} categories={categories} styles={styles} onSubmitted={close} />
       </div>
     </section>

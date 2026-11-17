@@ -1,3 +1,4 @@
+import ui from "../../ui.module.css";
 import type { ButtonHTMLAttributes, FormEvent, ReactNode } from "react";
 import { useFetcher } from "react-router";
 import { Button } from "../../components/atoms";
@@ -25,8 +26,8 @@ export function InlineActionForm({
       <fetcher.Form method="post" className={className} onSubmit={onSubmit} aria-busy={pending || undefined}>
         {children({ pending })}
       </fetcher.Form>
-      {fetcher.data?.error ? <small className="field-error inline-action-feedback" role="alert">{fetcher.data.error}</small> : null}
-      {successMessage && fetcher.data && !fetcher.data.error ? <small className="inline-action-success" role="status">{successMessage}</small> : null}
+      {fetcher.data?.error ? <small className={ui["field-error"] + " " + ui["inline-action-feedback"]} role="alert">{fetcher.data.error}</small> : null}
+      {successMessage && fetcher.data && !fetcher.data.error ? <small className={ui["inline-action-success"]} role="status">{successMessage}</small> : null}
     </>
   );
 }
@@ -39,7 +40,7 @@ export function PendingActionButton({ pending, pendingLabel, children, disabled,
 }) {
   return (
     <Button {...props} type="submit" disabled={disabled || pending} aria-busy={pending || undefined}>
-      {pending ? <span className="spinner" aria-hidden="true" /> : null}
+      {pending ? <span className={ui["spinner"]} aria-hidden="true" /> : null}
       <span aria-live="polite">{pending ? pendingLabel : children}</span>
     </Button>
   );

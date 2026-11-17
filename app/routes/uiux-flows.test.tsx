@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { expect, it, vi } from "vitest";
-import AdminDashboardRoute from "./admin-dashboard";
+import AdminCasesRoute from "./admin-cases";
 import CaseDetailRoute from "./case-detail";
 import { formatPriceRange } from "../features/cases/format";
 import { priceErrors } from "../features/forms/validation";
@@ -9,8 +9,8 @@ import { priceErrors } from "../features/forms/validation";
 it("管理者の削除確認をキャンセルすると送信せず、確定時だけ送信する", async () => {
   const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
   const action = vi.fn(() => ({ saved: true }));
-  const props = { loaderData: { users: [], companies: [], applications: [], posts: [{ id: "case", title: "台所の改修", status: "PUBLISHED", company_id: "company" }] } } as unknown as Parameters<typeof AdminDashboardRoute>[0];
-  render(<RouterProvider router={createMemoryRouter([{ path: "/", element: <AdminDashboardRoute {...props} />, action }])} />);
+  const props = { loaderData: { items: [{ id: "case", title: "台所の改修", status: "PUBLISHED", company_id: "company" }], total: 1, page: 1 } } as unknown as Parameters<typeof AdminCasesRoute>[0];
+  render(<RouterProvider router={createMemoryRouter([{ path: "/admin/cases", element: <AdminCasesRoute {...props} />, action }], { initialEntries: ["/admin/cases"] })} />);
   fireEvent.click(screen.getByRole("button", { name: "削除" }));
   expect(confirm).toHaveBeenCalledWith(expect.stringContaining("台所の改修"));
   expect(action).not.toHaveBeenCalled();

@@ -1,3 +1,4 @@
+import ui from "../ui.module.css";
 import type { Route } from "./+types/company-apply";
 import { data } from "react-router";
 import { z } from "zod";
@@ -57,23 +58,23 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 export default function CompanyApplyRoute({ actionData }: Route.ComponentProps) {
   return (
     <DashboardLayout>
-      <header className="page-heading">
+      <header className={ui["page-heading"]}>
         <h1>企業アカウントを申請</h1>
         <p>管理者の承認後、施工事例の投稿と自社情報の編集ができるようになります。</p>
       </header>
-      {actionData && "submitted" in actionData && actionData.submitted ? <p className="success-message" role="status">企業申請を受け付けました。</p> : null}
-      {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
+      {actionData && "submitted" in actionData && actionData.submitted ? <p className={ui["success-message"]} role="status">企業申請を受け付けました。</p> : null}
+      {actionData && "error" in actionData ? <p className={ui["form-error"]} role="alert">{actionData.error}</p> : null}
       {!(actionData && "submitted" in actionData && actionData.submitted) ? (
-        <ManagedForm protect method="post" className="edit-form">
-          <section className="form-card">
-            <div className="form-grid">
+        <ManagedForm protect method="post" className={ui["edit-form"]}>
+          <section className={ui["form-card"]}>
+            <div className={ui["form-grid"]}>
               <Field label="企業名"><input name="companyName" required maxLength={120} /></Field>
               <Field label="所在地"><input name="address" autoComplete="street-address" maxLength={200} /></Field>
               <Field label="電話番号"><input name="phone" type="tel" autoComplete="tel" maxLength={40} /></Field>
               <Field label="ホームページ"><input name="websiteUrl" type="url" /></Field>
             </div>
             <Field label="企業紹介"><textarea name="description" rows={5} maxLength={2000} /></Field>
-            <div className="form-actions"><SubmitButton>申請する</SubmitButton></div>
+            <div className={ui["form-actions"]}><SubmitButton>申請する</SubmitButton></div>
           </section>
         </ManagedForm>
       ) : null}
