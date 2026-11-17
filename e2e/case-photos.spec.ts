@@ -60,6 +60,23 @@ for (const width of [1280, 390, 320]) {
 
 test("ホームのショーケースでも画像を枠いっぱいに使う", async ({ page }) => {
   await page.goto("/");
+  const map = page.getByRole("region", { name: "参加企業の所在地" });
+  await expect(map.getByRole("img")).toHaveAttribute("src", "/maps/iizuka-openstreetmap.png");
+  await expect(map.getByRole("link", { name: "© OpenStreetMap contributors" })).toHaveAttribute("href", "https://www.openstreetmap.org/copyright");
+  const pin = map.getByRole("link", { name: "1：株式会社リビングデザインのホームページへ", exact: true });
+  await expect(pin).toHaveAttribute("href", "https://living-d-f.com/");
+  await expect(pin).toHaveText("1");
+  const companyList = map.getByRole("list", { name: "参加企業一覧" });
+  await expect(companyList.getByRole("link", { name: "1 リビングデザイン" })).toHaveAttribute("href", "https://living-d-f.com/");
+  await expect(pin.locator("svg")).toHaveCSS("fill", "rgb(210, 56, 52)");
+  const circle = await pin.locator("..").boundingBox();
+  expect(circle!.width).toBeCloseTo(circle!.height, 0);
+  const companyListBox = await companyList.boundingBox();
+  expect(companyListBox!.x).toBeGreaterThan(circle!.x + circle!.width);
+  await expect(page.getByText("ピンを押すと企業のホームページへ移動します。")).toHaveCount(0);
+  const mapBox = await map.boundingBox();
+  const searchBox = await page.getByRole("heading", { name: "検索", exact: true }).boundingBox();
+  expect(mapBox!.y + mapBox!.height).toBeLessThan(searchBox!.y);
   const card = page.locator('article[class*="case-card"]').first();
   await expect(card).toBeVisible();
   const box = await card.boundingBox();
@@ -68,6 +85,9 @@ test("ホームのショーケースでも画像を枠いっぱいに使う", as
   await expect(card.getByText("￥1,500,000〜￥2,500,000")).toBeVisible();
   await page.screenshot({ path: "/tmp/home-showcase-desktop.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
+  const mobileCircle = await pin.locator("..").boundingBox();
+  const mobileList = await companyList.boundingBox();
+  expect(mobileList!.y).toBeGreaterThan(mobileCircle!.y + mobileCircle!.height);
   await page.screenshot({ path: "/tmp/home-showcase-mobile.png", fullPage: true });
 
   await page.emulateMedia({ reducedMotion: "no-preference" });
