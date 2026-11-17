@@ -1,5 +1,5 @@
 import ui from "../../ui.module.css";
-import { Building2, ChevronLeft, ChevronRight, Heart, MapPin, Search } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight, Clock3, Hammer, Heart, MapPin, Search } from "lucide-react";
 import { Form, Link, useFetcher, useLocation, useSearchParams } from "react-router";
 import { cloneElement, isValidElement, useId, type ReactNode, type ReactElement, type InputHTMLAttributes } from "react";
 import { Button } from "../atoms";
@@ -85,10 +85,10 @@ function FavoriteControl({ caseId, presentation }: { caseId: string; presentatio
       }}
       aria-label={active ? "お気に入りから削除" : "お気に入りに追加"}
       aria-pressed={active}
-      title={!authorization ? "この端末に保存します。ログインするとアカウントへ引き継げます。" : undefined}
+      title={iconOnly ? active ? "お気に入りから削除" : "お気に入りに追加" : !authorization ? "この端末に保存します。ログインするとアカウントへ引き継げます。" : undefined}
     >
       <Heart size={15} fill={active ? "currentColor" : "none"} aria-hidden="true" />
-      {iconOnly ? null : pending ? "保存中…" : active ? "お気に入り済み" : "お気に入りへ"}
+      {iconOnly ? null : pending ? "保存中…" : active ? "保存済み" : "保存"}
     </button>
     {fetcher.data?.error || error ? <small className={ui["field-error"]} role="alert">{fetcher.data?.error || "お気に入りを読み込めませんでした。再読み込みしてください。"}</small> : null}
     <span className={ui["sr-only"]} role="status">{pending ? "お気に入りを保存しています…" : fetcher.data && !fetcher.data.error ? active ? "お気に入りに保存しました。" : "お気に入りから削除しました。" : ""}</span>
@@ -136,12 +136,15 @@ export function CaseListItem({ item }: { item: CaseStudy }) {
       <div className={ui["case-list-item__body"]}>
         <h2><Link to={detailUrl}>{item.title}</Link></h2>
         <p className={ui["case-list-item__company"]}><Link to={"/companies/" + item.companyId}>{item.company}</Link></p>
-        <p>{item.categories.join("・") || "箇所の記載なし"} / {item.area || "地域の記載なし"}</p>
+        <div className={ui["case-list-item__facts"]}>
+          <span><Hammer size={15} aria-hidden="true" /><span className={ui["sr-only"]}>施工箇所：</span>{item.categories.join("・") || "記載なし"}</span>
+          <span><MapPin size={15} aria-hidden="true" /><span className={ui["sr-only"]}>施工地域：</span>{item.area || "記載なし"}</span>
+        </div>
         <p className={ui["case-list-item__price"]}>{item.price}</p>
-        <p>施工期間：{item.period || "要相談"}</p>
+        <p className={ui["case-list-item__period"]}><Clock3 size={15} aria-hidden="true" /><span className={ui["sr-only"]}>施工期間：</span>{item.period || "要相談"}</p>
       </div>
       <div className={ui["case-list-item__actions"]}>
-        <FavoriteButton caseId={item.id} />
+        <FavoriteIconButton caseId={item.id} />
       </div>
     </article>
   );

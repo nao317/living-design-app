@@ -1,4 +1,5 @@
 import ui from "../../ui.module.css";
+import { ChevronLeft, ChevronRight, Images, Maximize2, X } from "lucide-react";
 import { useRef, useState } from "react";
 import { StorageImage } from "./storage-image";
 
@@ -11,7 +12,7 @@ export function CaseGallery({ images, paths = [], title }: { images: string[]; p
     <button type="button" className={ui["photo-button"] + " " + ui["gallery-cover"]} aria-label="施工写真1を拡大" onClick={() => expand(0)}>
       <StorageImage width={1200} height={780} src={images[0]} storagePath={paths[0]} bucket="case-images" alt={`${title}の施工写真1`} loading="eager" fetchPriority="high" />
     </button>
-    <div className={ui["gallery-caption"]}><span>施工写真 {images.length}枚</span><span>写真を選ぶと拡大します</span></div>
+    <div className={ui["gallery-caption"]}><span><Images size={16} aria-hidden="true" /><span className={ui["sr-only"]}>施工写真 </span>{images.length}枚</span><button type="button" className={ui["gallery-expand"]} onClick={() => expand(0)} aria-label="メイン写真を拡大"><Maximize2 size={15} aria-hidden="true" />拡大</button></div>
     {images.length > 1 ? <div className={ui["gallery-thumbnails"]}>{images.slice(1).map((src, index) => <button type="button" key={paths[index + 1] ?? `${src}-${index}`} className={ui["photo-button"]} aria-label={`施工写真${index + 2}を拡大`} onClick={() => expand(index + 1)}>
       <StorageImage width={180} height={120} src={src} storagePath={paths[index + 1]} bucket="case-images" alt={`${title}の施工写真${index + 2}`} loading="lazy" />
     </button>)}</div> : null}
@@ -19,9 +20,9 @@ export function CaseGallery({ images, paths = [], title }: { images: string[]; p
       if (event.key === "ArrowLeft") { event.preventDefault(); setSelected(index => Math.max(0, index - 1)); }
       if (event.key === "ArrowRight") { event.preventDefault(); setSelected(index => Math.min(images.length - 1, index + 1)); }
     }}>
-      <div className={ui["photo-dialog__toolbar"]}><span role="status">施工写真{selected + 1} / {images.length}</span><button className={ui.button + " " + ui["button--secondary"]} type="button" onClick={() => dialog.current?.close()}>閉じる</button></div>
+      <div className={ui["photo-dialog__toolbar"]}><span role="status">施工写真{selected + 1} / {images.length}</span><button className={ui.button + " " + ui["button--secondary"]} type="button" aria-label="閉じる" title="閉じる" onClick={() => dialog.current?.close()}><X size={20} aria-hidden="true" /></button></div>
       <StorageImage width={1600} height={1040} src={images[selected]} storagePath={paths[selected]} bucket="case-images" alt={`${title}の施工写真${selected + 1}`} loading="eager" />
-      {images.length > 1 ? <div className={ui["photo-dialog__controls"]}><button type="button" className={ui.button + " " + ui["button--secondary"]} disabled={selected === 0} onClick={() => setSelected(index => index - 1)}>前の写真</button><button type="button" className={ui.button + " " + ui["button--secondary"]} disabled={selected === images.length - 1} onClick={() => setSelected(index => index + 1)}>次の写真</button></div> : null}
+      {images.length > 1 ? <div className={ui["photo-dialog__controls"]}><button type="button" className={ui.button + " " + ui["button--secondary"]} aria-label="前の写真" disabled={selected === 0} onClick={() => setSelected(index => index - 1)}><ChevronLeft size={20} aria-hidden="true" />前へ</button><button type="button" className={ui.button + " " + ui["button--secondary"]} aria-label="次の写真" disabled={selected === images.length - 1} onClick={() => setSelected(index => index + 1)}>次へ<ChevronRight size={20} aria-hidden="true" /></button></div> : null}
     </dialog>
   </section>;
 }

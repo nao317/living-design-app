@@ -6,6 +6,6 @@
 .table tbody tr:hover { background: #fafcfa; }
 .table td { font-size: 14px; }
 .actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.numeric { font-variant-numeric: tabular-nums; }
+.numeric { font-family: var(--font-number); font-variant-numeric: tabular-nums; font-weight: 500; }
 .srOnly { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 600px) { .container { margin-inline: -14px; border-right: 0; border-left: 0; border-radius: 0; } }

@@ -30,11 +30,11 @@ export default function AdminDashboardRoute({ loaderData }: Route.ComponentProps
     <PageHeader title="審査待ちの申請" />
     <section className={ui["work-section"]}>
       <div className={ui["section-header"]}><h2>企業アカウント申請 <span>{loaderData.applicationCount}件</span></h2><Link to="/admin/applications">申請一覧へ</Link></div>
-      {loaderData.applications.length ? <ul className={ui["work-list"]}>{loaderData.applications.map(item => <li key={item.id}><Link to="/admin/applications"><strong>{item.company_name}</strong><time dateTime={item.created_at}>{date.format(new Date(item.created_at))} 申請</time></Link></li>)}</ul> : <p className={ui["work-empty"]}>審査待ちの企業申請はありません。</p>}
+      {loaderData.applications.length ? <ul className={ui["work-list"]}>{loaderData.applications.map(item => <li key={item.id}><Link to="/admin/applications"><strong>{item.company_name}</strong><time dateTime={item.created_at}>{date.format(new Date(item.created_at))}<span className={ui["sr-only"]}> 申請</span></time></Link></li>)}</ul> : <p className={ui["work-empty"]}>審査待ちの企業申請はありません。</p>}
     </section>
     <section className={ui["work-section"]}>
       <div className={ui["section-header"]}><h2>検索項目の申請 <span>{loaderData.tagCount}件</span></h2><Link to="/admin/tags">申請一覧へ</Link></div>
-      {loaderData.tags.length ? <ul className={ui["work-list"]}>{loaderData.tags.map(item => <li key={item.id}><Link to="/admin/tags"><strong>{item.proposed_name}</strong><time dateTime={item.created_at}>{date.format(new Date(item.created_at))} 申請</time></Link></li>)}</ul> : <p className={ui["work-empty"]}>審査待ちの検索項目はありません。</p>}
+      {loaderData.tags.length ? <ul className={ui["work-list"]}>{loaderData.tags.map(item => <li key={item.id}><Link to="/admin/tags"><strong>{item.proposed_name}</strong><time dateTime={item.created_at}>{date.format(new Date(item.created_at))}<span className={ui["sr-only"]}> 申請</span></time></Link></li>)}</ul> : <p className={ui["work-empty"]}>審査待ちの検索項目はありません。</p>}
     </section>
     <nav className={ui["management-links"]} aria-label="その他の管理"><Link to="/admin/users">ユーザーを管理</Link><Link to="/admin/cases">施工事例を管理</Link></nav>
   </DashboardLayout>;

@@ -1,6 +1,6 @@
 import ui from "../ui.module.css";
 import type { Route } from "./+types/company-detail";
-import { ExternalLink } from "lucide-react";
+import { CalendarDays, Clock3, ExternalLink, MapPin, MessageSquare, Phone } from "lucide-react";
 import { Link } from "react-router";
 import { Pagination } from "../components/molecules";
 import { Tag } from "../components/atoms";
@@ -56,14 +56,13 @@ export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps)
           <section className={ui["company-information"]}>
             <h2>会社情報</h2>
             <dl>
-              <div><dt>会社名</dt><dd>{loaderData.company.name}</dd></div>
-              <div><dt>所在地</dt><dd>{loaderData.company.address || "掲載なし"}</dd></div>
-              <div><dt>営業時間</dt><dd>{loaderData.company.businessHours || "掲載なし"}</dd></div>
-              <div><dt>電話番号</dt><dd>{loaderData.company.phone ? <a href={`tel:${loaderData.company.phone.replace(/[^0-9+]/g, "")}`}>{loaderData.company.phone}</a> : "未登録"}</dd></div>
-              <div><dt>設立</dt><dd>{loaderData.company.founded || "掲載なし"}</dd></div>
+              <div><dt title="所在地"><MapPin size={18} aria-hidden="true" /><span className={ui["sr-only"]}>所在地</span></dt><dd>{loaderData.company.address || "掲載なし"}</dd></div>
+              <div><dt title="営業時間"><Clock3 size={18} aria-hidden="true" /><span className={ui["sr-only"]}>営業時間</span></dt><dd>{loaderData.company.businessHours || "掲載なし"}</dd></div>
+              <div><dt title="電話番号"><Phone size={18} aria-hidden="true" /><span className={ui["sr-only"]}>電話番号</span></dt><dd>{loaderData.company.phone ? <a href={`tel:${loaderData.company.phone.replace(/[^0-9+]/g, "")}`}>{loaderData.company.phone}</a> : "掲載なし"}</dd></div>
+              <div><dt><CalendarDays size={18} aria-hidden="true" /><span>設立</span></dt><dd>{loaderData.company.founded || "掲載なし"}</dd></div>
             </dl>
             {loaderData.company.website ? <a className={ui["button"] + " " + ui["button--secondary"]} href={loaderData.company.website}>ホームページ <ExternalLink aria-hidden="true" size={14} /></a> : null}
-            <Link className={ui["button"] + " " + ui["button--primary"]} to={"/contact?companyId=" + loaderData.company.id}>問い合わせる</Link>
+            <Link className={ui["button"] + " " + ui["button--primary"]} to={"/contact?companyId=" + loaderData.company.id}><MessageSquare size={17} aria-hidden="true" />問い合わせる</Link>
           </section>
         </div>
       </article>
