@@ -1,3 +1,4 @@
+import ui from "../ui.module.css";
 import type { Route } from "./+types/search";
 import { Pagination } from "../components/molecules";
 import { Link, useNavigation } from "react-router";
@@ -50,9 +51,9 @@ export async function clientLoader({ request, serverLoader }: Route.ClientLoader
 clientLoader.hydrate = true as const;
 
 export function HydrateFallback() {
-  return <PublicLayout><div className="public-page search-page"><div className="search-layout">
-    <section className="search-results" aria-labelledby="result-heading">
-      <div className="search-results__header"><h1 id="result-heading">検索結果</h1><p role="status">施工事例を読み込んでいます…</p></div>
+  return <PublicLayout><div className={ui["public-page"] + " " + ui["search-page"]}><div className={ui["search-layout"]}>
+    <section className={ui["search-results"]} aria-labelledby="result-heading">
+      <div className={ui["search-results__header"]}><h1 id="result-heading">検索結果</h1><p role="status">施工事例を読み込んでいます…</p></div>
     </section>
   </div></div></PublicLayout>;
 }
@@ -67,28 +68,28 @@ export default function SearchRoute({ loaderData }: Route.ComponentProps) {
     filters.period && `${filters.period}か月以内`].filter(Boolean);
   return (
     <PublicLayout>
-      <div className="public-page search-page">
-        <header className="search-page__heading"><h1>施工事例を探す</h1></header>
-        <div className="search-layout">
+      <div className={ui["public-page"] + " " + ui["search-page"]}>
+        <header className={ui["search-page__heading"]}><h1>施工事例を探す</h1></header>
+        <div className={ui["search-layout"]}>
           <SearchFilters filters={loaderData.filters} categories={loaderData.categories} styles={loaderData.styles} />
-          <section className="search-results" aria-labelledby="result-heading" aria-busy={navigation.state !== "idle"}>
-            <div className="search-results__header">
+          <section className={ui["search-results"]} aria-labelledby="result-heading" aria-busy={navigation.state !== "idle"}>
+            <div className={ui["search-results__header"]}>
               <h2 id="result-heading">検索結果</h2>
               {loaderData.invalidPriceRange || loaderData.loadError ? null : <p role="status">{loaderData.total}件の施工事例が見つかりました</p>}
               {navigation.state !== "idle" ? <p role="status">検索中…</p> : null}
             </div>
-            {conditions.length ? <div className="active-filters" aria-label="適用中の検索条件">{conditions.map((condition) => <span className="tag" key={String(condition)}>{condition}</span>)}<Link to="/search">条件をクリア</Link></div> : null}
+            {conditions.length ? <div className={ui["active-filters"]} aria-label="適用中の検索条件">{conditions.map((condition) => <span className={ui["tag"]} key={String(condition)}>{condition}</span>)}<Link to="/search">条件をクリア</Link></div> : null}
             {loaderData.loadError ? (
-              <p className="form-error" role="alert">検索結果を取得できませんでした。時間をおいて再度お試しください。</p>
+              <p className={ui["form-error"]} role="alert">検索結果を取得できませんでした。時間をおいて再度お試しください。</p>
             ) : loaderData.invalidPriceRange ? (
-              <p className="form-error" role="alert">予算の下限は上限以下にしてください。</p>
+              <p className={ui["form-error"]} role="alert">予算の下限は上限以下にしてください。</p>
             ) : loaderData.items.length ? (
               <>
                 <CaseList items={loaderData.items} />
                 <Pagination totalItems={loaderData.total} currentPage={loaderData.filters.page} pageSize={pageSize} showSinglePage />
               </>
             ) : (
-              <div className="empty-state">
+              <div className={ui["empty-state"]}>
                 {loaderData.filters.q || loaderData.filters.area || loaderData.filters.category || loaderData.filters.style || loaderData.filters.priceMin !== undefined || loaderData.filters.priceMax !== undefined || loaderData.filters.period ? (
                   <><h2>該当する施工事例がありません</h2><p>条件を変更するか、<Link to="/search">条件をクリア</Link>して検索してください。</p></>
                 ) : (

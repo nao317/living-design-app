@@ -1,3 +1,4 @@
+import ui from "./ui.module.css";
 import {
   isRouteErrorResponse,
   Link,
@@ -9,7 +10,6 @@ import {
 } from "react-router";
 
 import type { Route } from "./+types/root";
-import "./app.css";
 import styles from "./root.module.css";
 import { Header } from "./components/organisms/header";
 import { SiteFooter } from "./components/organisms/site-footer";
@@ -56,7 +56,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <AuthProvider><FavoritesProvider><div className={styles.appShell}>
-      <a href="#main-content" className="skip-link">本文へ移動</a>
+      <a href="#main-content" className={ui["skip-link"]}>本文へ移動</a>
       <Header />
       <div id="page-content"><Outlet /></div>
       <SiteFooter />
@@ -81,9 +81,9 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
     <main id="main-content" tabIndex={-1} className={styles.errorBoundary}>
       <h1>{message}</h1>
       <p>{details}</p>
-      <div className="error-actions">
-        <Link className="button button--primary" to="/">ホームへ戻る</Link>
-        {message !== "404" ? <button type="button" className="button button--secondary" onClick={() => window.location.reload()}>再読み込み</button> : null}
+      <div className={ui["error-actions"]}>
+        <Link className={ui["button"] + " " + ui["button--primary"]} to="/">ホームへ戻る</Link>
+        {message !== "404" ? <button type="button" className={ui["button"] + " " + ui["button--secondary"]} onClick={() => window.location.reload()}>再読み込み</button> : null}
       </div>
       {stack && <pre className={styles.errorTrace}><code>{stack}</code></pre>}
     </main>

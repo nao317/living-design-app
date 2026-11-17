@@ -1,12 +1,13 @@
+import ui from "../ui.module.css";
 import { Link } from "react-router";
 import { PublicLayout } from "../components/templates/public-layout";
 
 export default function NotFoundRoute() {
   return (
     <PublicLayout>
-      <div className="not-found">
+      <div className={ui["not-found"]}>
         <h1>ページが見つかりません</h1>
-        <Link className="button button--primary" to="/">ホームへ戻る</Link>
+        <Link className={ui["button"] + " " + ui["button--primary"]} to="/">ホームへ戻る</Link>
       </div>
     </PublicLayout>
   );

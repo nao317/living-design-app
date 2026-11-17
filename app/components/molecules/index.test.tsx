@@ -53,7 +53,7 @@ describe("CaseCard", () => {
 it("現在位置と前後のページを示し、検索条件を保持する", () => {
   render(<RouterProvider router={createMemoryRouter([{ path: "/", element: <Pagination totalItems={10_000_000} currentPage={500_000} /> }], { initialEntries: ["/?q=収納"] })} />);
   expect(screen.getAllByRole("link")).toHaveLength(2);
-  expect(screen.getByText("500,000ページ、全1,000,000ページ")).toHaveClass("sr-only");
+  expect(screen.getByText("500,000ページ、全1,000,000ページ")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "次のページ" }).getAttribute("href")).toContain("page=500001");
   expect(new URLSearchParams(screen.getByRole("link", { name: "次のページ" }).getAttribute("href")!.slice(1)).get("q")).toBe("収納");
 });
@@ -75,7 +75,7 @@ it("指定された一覧では1ページだけでも現在位置を表示する
     element: <Pagination totalItems={6} pageSize={10} showSinglePage />,
   }])} />);
   expect(screen.getByRole("navigation", { name: "ページ送り" })).toBeInTheDocument();
-  expect(screen.getByText("1ページ、全1ページ")).toHaveClass("sr-only");
+  expect(screen.getByText("1ページ、全1ページ")).toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "前のページ" })).not.toBeInTheDocument();
   expect(screen.queryByRole("link", { name: "次のページ" })).not.toBeInTheDocument();
 });

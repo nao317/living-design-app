@@ -1,3 +1,4 @@
+import ui from "../ui.module.css";
 import type { Route } from "./+types/companies";
 import { Link } from "react-router";
 import { CompanySearchBar, Pagination } from "../components/molecules";
@@ -39,20 +40,20 @@ export function HydrateFallback() {
 export default function CompaniesRoute({ loaderData }: Route.ComponentProps) {
   return (
     <PublicLayout>
-      <div className="public-page companies-page">
-        <header className="page-heading"><h1>企業を探す</h1><p>{loaderData.total}件の登録企業</p></header>
+      <div className={ui["public-page"] + " " + ui["companies-page"]}>
+        <header className={ui["page-heading"]}><h1>企業を探す</h1><p>{loaderData.total}件の登録企業</p></header>
         <CompanySearchBar defaultValue={loaderData.query} />
         {loaderData.items.length ? (
           <>
-            <div className="company-directory">
+            <div className={ui["company-directory"]}>
               {loaderData.items.map((company) => (
-                <article className="company-directory__item" key={company.id}>
-                  {company.imagePath ? <StorageImage width={150} height={150} src={company.image} storagePath={company.imagePath} bucket="company-assets" preset="card" alt="" /> : <div className="image-empty">企業画像未登録</div>}
+                <article className={ui["company-directory__item"]} key={company.id}>
+                  {company.imagePath ? <StorageImage width={150} height={150} src={company.image} storagePath={company.imagePath} bucket="company-assets" preset="card" alt="" /> : <div className={ui["image-empty"]}>企業画像未登録</div>}
                   <div>
                     <h2>{company.name}</h2>
                     <p>{company.description || "企業紹介は準備中です。"}</p>
-                    <p className="company-directory__address">{company.address || "所在地未登録"}</p>
-                    <Link className="button button--secondary" to={`/companies/${company.id}`}>企業情報を見る</Link>
+                    <p className={ui["company-directory__address"]}>{company.address || "所在地未登録"}</p>
+                    <Link className={ui["button"] + " " + ui["button--secondary"]} to={`/companies/${company.id}`}>企業情報を見る</Link>
                   </div>
                 </article>
               ))}
@@ -60,7 +61,7 @@ export default function CompaniesRoute({ loaderData }: Route.ComponentProps) {
             <Pagination totalItems={loaderData.total} currentPage={loaderData.page} pageSize={pageSize} showSinglePage />
           </>
         ) : (
-          <div className="empty-state">{loaderData.query ? <><h2>条件に合う企業がありません</h2><p>別のキーワードで検索するか、<Link to="/companies">条件をクリア</Link>してください。</p></> : <><h2>登録されている企業がありません</h2><p>公開企業が登録されると、ここに表示されます。</p></>}</div>
+          <div className={ui["empty-state"]}>{loaderData.query ? <><h2>条件に合う企業がありません</h2><p>別のキーワードで検索するか、<Link to="/companies">条件をクリア</Link>してください。</p></> : <><h2>登録されている企業がありません</h2><p>公開企業が登録されると、ここに表示されます。</p></>}</div>
         )}
       </div>
     </PublicLayout>

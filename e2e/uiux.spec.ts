@@ -46,7 +46,7 @@ test("モバイルメニューのフォーカスが背景へ移らずEscapeで�
   await expect(page.getByRole("navigation", { name: "メインメニュー" }).getByRole("link", { name: "施工事例を探す" })).toBeFocused();
   for (let index = 0; index < 8; index++) {
     await page.keyboard.press(index % 3 === 0 ? "Shift+Tab" : "Tab");
-    expect(await page.evaluate(() => Boolean(document.activeElement?.closest(".header-nav, .menu-button")))).toBe(true);
+    expect(await page.evaluate(() => Boolean(document.activeElement?.closest("#site-navigation, [aria-controls='site-navigation']")))).toBe(true);
   }
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "メニューを開く" })).toBeFocused();
@@ -59,13 +59,13 @@ test("企業検索欄のフォーカスと動きを減らす設定に対応す�
   await page.goto("/companies", { waitUntil: "domcontentloaded" });
   await page.getByRole("textbox").focus();
   expect(await page.getByRole("textbox").evaluate((element) => getComputedStyle(element).outlineStyle)).toBe("solid");
-  const searchFocus = await page.locator(".search-bar").evaluate((element) => {
+  const searchFocus = await page.getByRole("textbox").locator("xpath=ancestor::form").evaluate((element) => {
     const style = getComputedStyle(element);
     return { outlineColor: style.outlineColor, boxShadow: style.boxShadow };
   });
   expect(searchFocus.outlineColor).toBe("rgb(0, 0, 0)");
   expect(searchFocus.boxShadow).toContain("rgb(255, 212, 61)");
-  expect(await page.locator(".header-nav").evaluate((element) => getComputedStyle(element).transitionDuration)).toBe("0s");
+  expect(await page.locator("#site-navigation").evaluate((element) => getComputedStyle(element).transitionDuration)).toBe("0s");
 });
 
 test("再設定メールの入力エラーを項目の横で案内する", async ({ page }) => {

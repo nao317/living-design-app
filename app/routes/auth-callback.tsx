@@ -1,3 +1,4 @@
+import ui from "../ui.module.css";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { resolveAuthCallbackRedirectTo } from "../features/auth/redirect";
@@ -33,10 +34,10 @@ export default function AuthCallbackRoute() {
   }, [navigate, searchParams]);
 
   return (
-    <main id="main-content" tabIndex={-1} className="auth-callback">
+    <main id="main-content" tabIndex={-1} className={ui["auth-callback"]}>
       <h1>{error ? "認証エラー" : "認証しています"}</h1>
       <p role={error ? "alert" : "status"}>{error || "そのままお待ちください…"}</p>
-      {error ? <Link className="button button--primary" to="/login">ログインへ戻る</Link> : null}
+      {error ? <Link className={ui["button"] + " " + ui["button--primary"]} to="/login">ログインへ戻る</Link> : null}
     </main>
   );
 }

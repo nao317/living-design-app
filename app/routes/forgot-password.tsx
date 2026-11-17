@@ -1,3 +1,4 @@
+import ui from "../ui.module.css";
 import { Link } from "react-router";
 import { z } from "zod";
 import type { Route } from "./+types/forgot-password";
@@ -20,12 +21,12 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
 }
 
 export default function ForgotPasswordRoute({ actionData }: Route.ComponentProps) {
-  return <main id="main-content" tabIndex={-1} className="auth-page"><section className="auth-panel">
+  return <main id="main-content" tabIndex={-1} className={ui["auth-page"]}><section className={ui["auth-panel"]}>
     <h1>パスワードの再設定</h1>
     <p>登録したメールアドレスに、再設定用のリンクを送信します。</p>
-    {actionData && "sent" in actionData && actionData.sent ? <p className="form-success" role="status">該当するアカウントがある場合、再設定メールを送信しました。メール内のリンクを開いてください。届かない場合は迷惑メールフォルダーもご確認ください。</p> : null}
-    {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
-    <ManagedForm method="post" className="auth-form"><Field label="メールアドレス"><input name="email" type="email" autoComplete="email" spellCheck={false} required /></Field><SubmitButton pendingLabel="送信中…">再設定メールを送る</SubmitButton></ManagedForm>
-    <p className="auth-help"><Link to="/login">ログインへ戻る</Link></p>
+    {actionData && "sent" in actionData && actionData.sent ? <p className={ui["form-success"]} role="status">該当するアカウントがある場合、再設定メールを送信しました。メール内のリンクを開いてください。届かない場合は迷惑メールフォルダーもご確認ください。</p> : null}
+    {actionData && "error" in actionData ? <p className={ui["form-error"]} role="alert">{actionData.error}</p> : null}
+    <ManagedForm method="post" className={ui["auth-form"]}><Field label="メールアドレス"><input name="email" type="email" autoComplete="email" spellCheck={false} required /></Field><SubmitButton pendingLabel="送信中…">再設定メールを送る</SubmitButton></ManagedForm>
+    <p className={ui["auth-help"]}><Link to="/login">ログインへ戻る</Link></p>
   </section></main>;
 }

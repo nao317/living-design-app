@@ -1,3 +1,4 @@
+import ui from "../ui.module.css";
 import type { Route } from "./+types/company-profile-edit";
 import { Camera, Plus, Trash2 } from "lucide-react";
 import { data } from "react-router";
@@ -8,7 +9,7 @@ import { validationErrors } from "../features/forms/validation";
 import { DashboardLayout } from "../components/templates/dashboard-layout";
 import { requireAuthorization } from "../features/auth/authorization.client";
 import { ProtectedRouteFallback } from "../features/auth/protected-route-fallback";
-import { getAuthorizationContext } from "../features/auth/authorization.client";
+import { getActiveCompanyId } from "../features/auth/company-selection.client";
 import { getSupabaseBrowserClient, isSupabaseConfigured } from "../lib/supabase.client";
 import type { CompanyProfile } from "../features/cases/types";
 import { getSignedImageUrl, isImageFile, MAX_IMAGE_BYTES, removeImages, uploadImage } from "../features/media/image-storage.client";
@@ -30,15 +31,15 @@ export function loader() {
 }
 
 export async function clientAction({ request }: Route.ClientActionArgs) {
-  await requireAuthorization(request, { role: "COMPANY", companyRoles: ["OWNER", "ADMIN"] });
+  const context = await requireAuthorization(request, { role: "COMPANY" });
+  const companyId = getActiveCompanyId(context);
+  const membership = context.memberships.find((item) => item.companyId === companyId);
+  if (!companyId || (membership?.role !== "OWNER" && membership?.role !== "ADMIN")) throw new Response("権限がありません", { status: 404 });
   const formData = await request.formData();
   const result = profileSchema.safeParse(Object.fromEntries(formData));
   if (!result.success) return data({ error: "入力内容を確認してください。", fieldErrors: validationErrors(result.error) }, { status: 400 });
 
   if (isSupabaseConfigured()) {
-    const context = await getAuthorizationContext();
-    const companyId = context?.memberships[0]?.companyId;
-    if (companyId) {
     const foundedYear = result.data.founded.replace(/[^0-9]/g, "");
     const supabase = getSupabaseBrowserClient();
     const { data: currentCompany, error: currentCompanyError } = await supabase.from("companies")
@@ -94,20 +95,18 @@ export async function clientAction({ request }: Route.ClientActionArgs) {
     const orphanedUploads = uploadedPaths.filter((path) => path !== coverPath && path !== logoPath);
     const removeError = await removeImages("company-assets", [...oldPaths, ...orphanedUploads]);
     if (removeError) return data({ error: "情報は保存しましたが、古い画像を削除できませんでした。" }, { status: 400 });
-    }
   }
 
   return data({ saved: true });
 }
 
 export async function clientLoader({ request, serverLoader }: Route.ClientLoaderArgs) {
-  await requireAuthorization(request, { role: "COMPANY", companyRoles: ["OWNER", "ADMIN"] });
+  const context = await requireAuthorization(request, { role: "COMPANY" });
+  const companyId = getActiveCompanyId(context);
+  const membership = context.memberships.find((item) => item.companyId === companyId);
+  if (!companyId || (membership?.role !== "OWNER" && membership?.role !== "ADMIN")) throw new Response("権限がありません", { status: 404 });
   const serverData = await serverLoader();
   if (!isSupabaseConfigured()) return serverData;
-
-  const context = await getAuthorizationContext();
-  const companyId = context?.memberships[0]?.companyId;
-  if (!companyId) return serverData;
 
   const supabase = getSupabaseBrowserClient();
   const { data: record, error } = await supabase.from("companies")
@@ -154,31 +153,31 @@ export function HydrateFallback() {
 }
 
 export default function CompanyProfileEditRoute({ loaderData, actionData }: Route.ComponentProps) {
-  if (!loaderData.company) return <DashboardLayout type="company"><div className="empty-state"><h1>企業情報が見つかりません</h1></div></DashboardLayout>;
+  if (!loaderData.company) return <DashboardLayout type="company"><div className={ui["empty-state"]}><h1>企業情報が見つかりません</h1></div></DashboardLayout>;
 
   return (
     <DashboardLayout type="company">
-      <header className="page-heading"><h1>企業情報の編集</h1></header>
-      {actionData && "saved" in actionData && actionData.saved ? <p className="success-message" role="status">企業情報を保存しました。</p> : null}
-      {actionData && "error" in actionData ? <p className="form-error" role="alert">{actionData.error}</p> : null}
-      <ManagedForm protect method="post" encType="multipart/form-data" className="edit-form">
-        <section className="company-media-fields">
-          <label className="media-placeholder media-upload">
+      <header className={ui["page-heading"]}><h1>企業情報の編集</h1></header>
+      {actionData && "saved" in actionData && actionData.saved ? <p className={ui["success-message"]} role="status">企業情報を保存しました。</p> : null}
+      {actionData && "error" in actionData ? <p className={ui["form-error"]} role="alert">{actionData.error}</p> : null}
+      <ManagedForm protect method="post" encType="multipart/form-data" className={ui["edit-form"]}>
+        <section className={ui["company-media-fields"]}>
+          <label className={ui["media-placeholder"] + " " + ui["media-upload"]}>
             {loaderData.company.coverImage ? <StorageImage width={600} height={225} src={loaderData.company.coverImage} storagePath={loaderData.company.coverImagePath} bucket="company-assets" alt="企業のメイン画像" /> : <><Plus aria-hidden="true" /><span>メイン画像を追加</span></>}
             <span>保存画像は1MB以内</span>
             <input type="file" name="coverImage" accept="image/jpeg,image/png,image/webp" />
           </label>
-          <label className="media-placeholder media-upload">
+          <label className={ui["media-placeholder"] + " " + ui["media-upload"]}>
             {loaderData.company.logoImage ? <StorageImage width={200} height={200} src={loaderData.company.logoImage} storagePath={loaderData.company.logoImagePath} bucket="company-assets" alt="企業ロゴ" /> : <><Camera aria-hidden="true" /><span>ロゴ画像を追加</span></>}
             <span>保存画像は1MB以内</span>
             <input type="file" name="logoImage" accept="image/jpeg,image/png,image/webp" />
           </label>
-          <label className="media-remove"><input type="checkbox" name="removeCover" /> <Trash2 aria-hidden="true" size={14} />メイン画像を削除</label>
-          <label className="media-remove"><input type="checkbox" name="removeLogo" /> <Trash2 aria-hidden="true" size={14} />ロゴ画像を削除</label>
+          <label className={ui["media-remove"]}><input type="checkbox" name="removeCover" /> <Trash2 aria-hidden="true" size={14} />メイン画像を削除</label>
+          <label className={ui["media-remove"]}><input type="checkbox" name="removeLogo" /> <Trash2 aria-hidden="true" size={14} />ロゴ画像を削除</label>
         </section>
-        <section className="form-card">
+        <section className={ui["form-card"]}>
           <h2>企業情報</h2>
-          <div className="form-grid">
+          <div className={ui["form-grid"]}>
             <Field label="企業名"><input name="name" autoComplete="organization" required maxLength={120} defaultValue={loaderData.company.name} /></Field>
             <Field label="問い合わせ先メールアドレス"><input name="email" type="email" autoComplete="email" spellCheck={false} defaultValue={loaderData.company.email} /></Field>
             <Field label="設立年"><input name="founded" defaultValue={loaderData.company.founded} /></Field>
@@ -188,7 +187,7 @@ export default function CompanyProfileEditRoute({ loaderData, actionData }: Rout
             <Field label="営業時間"><input name="businessHours" defaultValue={loaderData.company.businessHours} /></Field>
           </div>
           <Field label="企業紹介"><textarea name="description" rows={3} defaultValue={loaderData.company.description} /></Field>
-          <div className="form-actions"><SubmitButton>更新する</SubmitButton></div>
+          <div className={ui["form-actions"]}><SubmitButton>更新する</SubmitButton></div>
         </section>
       </ManagedForm>
     </DashboardLayout>

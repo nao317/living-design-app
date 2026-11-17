@@ -1,3 +1,4 @@
+import ui from "../ui.module.css";
 import type { Route } from "./+types/case-detail";
 import { ArrowLeft, Building2 } from "lucide-react";
 import { Link, useLocation } from "react-router";
@@ -34,33 +35,33 @@ export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
   const location = useLocation();
   const requestedReturnTo: unknown = new URLSearchParams(location.search).get("returnTo") ?? location.state?.searchReturnTo;
   const returnTo = typeof requestedReturnTo === "string" && (requestedReturnTo === "/search" || requestedReturnTo.startsWith("/search?")) ? requestedReturnTo : "/search";
-  if (!loaderData.item) return <PublicLayout><div className="public-page empty-state"><h1>施工事例が見つかりません</h1></div></PublicLayout>;
+  if (!loaderData.item) return <PublicLayout><div className={ui["public-page"] + " " + ui["empty-state"]}><h1>施工事例が見つかりません</h1></div></PublicLayout>;
   const { item } = loaderData;
   const gallery = item.images ?? [];
   return (
     <PublicLayout>
-      <article className="public-page case-detail-page">
-        <Link to={returnTo} className="back-link"><ArrowLeft size={16} aria-hidden="true" />検索結果へ戻る</Link>
-        {item.status && item.status !== "PUBLISHED" ? <p className="case-visibility-notice" role="status">この事例は{item.status === "DRAFT" ? "下書き" : "非公開"}です。検索結果には表示されません。<Link to={`/company/cases/${item.id}/edit`}>編集画面で公開する</Link></p> : null}
+      <article className={ui["public-page"] + " " + ui["case-detail-page"]}>
+        <Link to={returnTo} className={ui["back-link"]}><ArrowLeft size={16} aria-hidden="true" />検索結果へ戻る</Link>
+        {item.status && item.status !== "PUBLISHED" ? <p className={ui["case-visibility-notice"]} role="status">この事例は{item.status === "DRAFT" ? "下書き" : "非公開"}です。検索結果には表示されません。<Link to={`/company/cases/${item.id}/edit`}>編集画面で公開する</Link></p> : null}
         <CaseGallery images={gallery} paths={item.imagesPaths} title={item.title} />
-        <div className="case-detail-layout">
-          <section className="case-detail-main">
-            <div className="case-detail-title">
+        <div className={ui["case-detail-layout"]}>
+          <section className={ui["case-detail-main"]}>
+            <div className={ui["case-detail-title"]}>
               <div>{item.categories.map((category) => <Tag key={category}>{category}</Tag>)}<h1>{item.title}</h1></div>
               <FavoriteButton caseId={item.id} />
             </div>
             <p>{item.summary || "この施工事例の概要は準備中です。"}</p>
-            <dl className="case-specs">
+            <dl className={ui["case-specs"]}>
               <div><dt>費用目安</dt><dd>{item.price}</dd></div>
               <div><dt>施工期間</dt><dd>{item.period || "要相談"}</dd></div>
               <div><dt>施工エリア</dt><dd>{item.area || "要相談"}</dd></div>
             </dl>
           </section>
-          <aside className="case-company">
+          <aside className={ui["case-company"]}>
             <h2><Building2 aria-hidden="true" size={18} />{item.company}</h2>
-            {item.companyImage ? <StorageImage width={240} height={130} src={item.companyImage} storagePath={item.companyImagePath} bucket="company-assets" alt={item.company} /> : <div className="image-empty">企業画像未登録</div>}
-            <Link className="button button--secondary" to={"/companies/" + item.companyId}>企業情報を見る</Link>
-            <Link className="button button--primary" to={`/contact?companyId=${item.companyId}&caseId=${item.id}`}>企業に問い合わせる</Link>
+            {item.companyImage ? <StorageImage width={240} height={130} src={item.companyImage} storagePath={item.companyImagePath} bucket="company-assets" alt={item.company} /> : <div className={ui["image-empty"]}>企業画像未登録</div>}
+            <Link className={ui["button"] + " " + ui["button--secondary"]} to={"/companies/" + item.companyId}>企業情報を見る</Link>
+            <Link className={ui["button"] + " " + ui["button--primary"]} to={`/contact?companyId=${item.companyId}&caseId=${item.id}`}>企業に問い合わせる</Link>
           </aside>
         </div>
       </article>

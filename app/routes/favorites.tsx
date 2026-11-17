@@ -1,3 +1,4 @@
+import ui from "../ui.module.css";
 import { CaseList } from "../components/organisms";
 import { Pagination } from "../components/molecules";
 import { DashboardLayout } from "../components/templates/dashboard-layout";
@@ -34,8 +35,8 @@ export function HydrateFallback() {
 export default function FavoritesRoute({ loaderData }: { loaderData: ReturnType<typeof loader> }) {
   return (
     <DashboardLayout>
-      <header className="page-heading"><h1>お気に入り</h1></header>
-      {loaderData.items.length ? <CaseList items={loaderData.items} /> : <div className="empty-state"><h2>お気に入りはまだありません</h2><p>気になる施工事例を保存して、あとから比較できます。</p><Link to="/search" className="button button--primary">施工事例を探す</Link></div>}
+      <header className={ui["page-heading"]}><h1>お気に入り</h1></header>
+      {loaderData.items.length ? <CaseList items={loaderData.items} /> : <div className={ui["empty-state"]}><h2>お気に入りはまだありません</h2><p>気になる施工事例を保存して、あとから比較できます。</p><Link to="/search" className={ui["button"] + " " + ui["button--primary"]}>施工事例を探す</Link></div>}
       <Pagination totalItems={loaderData.total} currentPage={loaderData.page} pageSize={pageSize} />
     </DashboardLayout>
   );

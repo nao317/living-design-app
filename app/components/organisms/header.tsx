@@ -1,5 +1,6 @@
+import ui from "../../ui.module.css";
 import { House, Menu, X } from "lucide-react";
-import { Link, NavLink, useNavigate } from "react-router";
+import { Link, NavLink, useLocation, useNavigate } from "react-router";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../features/auth/auth-context";
 
@@ -8,6 +9,8 @@ export function Header() {
   const { state: { user, authorization }, meta: auth } = useAuth();
   const [logoutError, setLogoutError] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
+  const dashboardRoute = /^\/(admin|company|mypage)(\/|$)/.test(location.pathname);
   const menuButton = useRef<HTMLButtonElement>(null);
   const menu = useRef<HTMLElement>(null);
 
@@ -60,42 +63,42 @@ export function Header() {
   }
 
   return (
-    <header className="site-header">
-      <div className="site-header__inner">
-        <Link to="/" className="brand" aria-label="飯塚のリノベ ホーム">
+    <header className={ui["site-header"]}>
+      <div className={ui["site-header__inner"]}>
+        <Link to="/" className={ui["brand"]} aria-label="飯塚のリノベ ホーム">
           <House size={25} strokeWidth={2.25} aria-hidden="true" />
           <span>飯塚のリノベ</span>
         </Link>
-        {open ? <button type="button" className="menu-backdrop" tabIndex={-1} aria-label="メニューの外側をクリックして閉じる" onClick={() => setOpen(false)} /> : null}
-        <nav ref={menu} id="site-navigation" className={open ? "header-nav is-open" : "header-nav"} aria-label="メインメニュー" onClick={() => setOpen(false)}>
+        {open ? <button type="button" className={ui["menu-backdrop"]} tabIndex={-1} aria-label="メニューの外側をクリックして閉じる" onClick={() => setOpen(false)} /> : null}
+        <nav ref={menu} id="site-navigation" className={`${ui["header-nav"]} ${open ? ui["is-open"] : ""}`.trim()} aria-label="メインメニュー" onClick={() => setOpen(false)}>
           <NavLink to="/search">施工事例を探す</NavLink>
           <NavLink to="/companies">企業を探す</NavLink>
           <NavLink to="/contact">お問い合わせ</NavLink>
           {!auth.ready ? (
-            <span className="header-auth-loading" role="status"><span className="spinner" aria-hidden="true" />確認中…</span>
+            <span className={ui["header-auth-loading"]} role="status"><span className={ui["spinner"]} aria-hidden="true" />確認中…</span>
           ) : user ? (
             <>
               {authorization?.accountRole === "ADMIN" ? <NavLink to="/admin">管理画面</NavLink> : null}
               {authorization?.accountRole === "COMPANY" ? <NavLink to="/company">企業管理</NavLink> : null}
               {authorization?.accountRole === "GENERAL" ? <NavLink to="/mypage">マイページ</NavLink> : null}
-              <button type="button" className="header-login" onClick={handleLogout}>ログアウト</button>
+              <button type="button" className={ui["header-login"]} onClick={handleLogout}>ログアウト</button>
             </>
           ) : (
-            <NavLink to="/login" className="header-login">ログイン/会員登録</NavLink>
+            <NavLink to="/login" className={ui["header-login"]}>ログイン/会員登録</NavLink>
           )}
         </nav>
-        {logoutError ? <p role="alert" className="field-error header-error">{logoutError}</p> : null}
-        <button
+        {logoutError ? <p role="alert" className={ui["field-error"] + " " + ui["header-error"]}>{logoutError}</p> : null}
+        {!dashboardRoute ? <button
           type="button"
           ref={menuButton}
-          className="menu-button"
+          className={ui["menu-button"]}
           onClick={() => setOpen((value) => !value)}
           aria-controls="site-navigation"
           aria-expanded={open}
           aria-label={open ? "メニューを閉じる" : "メニューを開く"}
         >
           {open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
-        </button>
+        </button> : null}
       </div>
     </header>
   );

@@ -14,9 +14,15 @@ const protectedPages = [
   "/mypage/favorites",
   "/company/apply",
   "/company",
+  "/company/cases",
+  "/company/messages",
+  "/company/members",
   "/company/profile/edit",
   "/company/cases/new",
   "/admin",
+  "/admin/users",
+  "/admin/applications",
+  "/admin/cases",
 ] as const;
 
 for (const [path, heading] of pages) {
@@ -70,6 +76,7 @@ test("指示にない英語見出しとキャッチコピーを表示しない",
 
 for (const viewport of [
   { name: "desktop", width: 1280, height: 900 },
+  { name: "tablet", width: 768, height: 1024 },
   { name: "mobile", width: 390, height: 844 },
 ] as const) {
   test(viewport.name + "で横方向にはみ出さない", async ({ page }) => {
@@ -108,7 +115,7 @@ test("ヘッダーはスクロールしても画面上部に残る", async ({ pa
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await page.evaluate(() => window.scrollTo(0, 600));
 
-  const headerBox = await page.locator("header.site-header").boundingBox();
+  const headerBox = await page.getByRole("banner").boundingBox();
   expect(headerBox).not.toBeNull();
   expect(headerBox!.y).toBeLessThanOrEqual(1);
 });
