@@ -1,5 +1,6 @@
 import ui from "../../ui.module.css";
 import { useState } from "react";
+import { ArrowDownUp, Search, SlidersHorizontal } from "lucide-react";
 import { Form, Link, useSearchParams } from "react-router";
 import type { SearchOption } from "../../features/cases/public-data.client";
 import type { SearchParams } from "../../features/search/schema";
@@ -28,7 +29,7 @@ function FilterForm({ filters, categories = [], styles = [], presentation, onSub
     </fieldset>
     {home ? <details className={ui["filter-details"]}><summary>詳しい条件を指定する</summary><div>{additional}</div></details> : additional}
     {!home ? <input type="hidden" name="sort" value={filters?.sort ?? "newest"} /> : null}
-    <Button className={ui["filter-submit"]} type="submit">事例を検索する</Button>
+    <Button className={ui["filter-submit"]} type="submit" aria-label="事例を検索する"><Search size={18} aria-hidden="true" />検索</Button>
     {!home ? <Link className={ui["filter-clear"]} to="/search" onClick={onSubmitted}>条件をすべて解除</Link> : null}
   </Form>;
 }
@@ -37,7 +38,7 @@ export function SearchFilters({ filters, ...options }: FilterOptions & { filters
   const [open, setOpen] = useState(false);
   const count = [filters.q, filters.area, filters.category, filters.style, filters.priceMin !== undefined || filters.priceMax !== undefined, filters.period].filter(Boolean).length;
   return <section className={`${ui["filter-panel"]} ${open ? ui["is-open"] : ""}`}>
-    <button type="button" className={ui["filter-toggle"] + " " + ui.button + " " + ui["button--secondary"]} aria-expanded={open} aria-controls="search-filters" onClick={() => setOpen(current => !current)}>{open ? "検索条件を閉じる" : count ? `検索条件（${count}件指定）` : "検索条件を指定"}</button>
+    <button type="button" className={ui["filter-toggle"] + " " + ui.button + " " + ui["button--secondary"]} aria-expanded={open} aria-label={open ? "検索条件を閉じる" : count ? `検索条件（${count}件指定）` : "検索条件を指定"} aria-controls="search-filters" onClick={() => setOpen(current => !current)}><SlidersHorizontal size={18} aria-hidden="true" />{open ? "閉じる" : "検索条件"}{count ? <span className={ui["filter-count"]}>{count}</span> : null}</button>
     <div id="search-filters" className={ui["filter-panel__content"]}><FilterForm filters={filters} presentation="results" {...options} onSubmitted={() => setOpen(false)} /></div>
   </section>;
 }
@@ -45,6 +46,6 @@ export function SearchSort({ value }: { value: SearchParams["sort"] }) {
   const [params] = useSearchParams();
   return <Form method="get" action="/search" className={ui["search-sort"]}>
     {[...params].filter(([key]) => key !== "sort" && key !== "page").map(([key, value], index) => <input type="hidden" key={`${key}-${index}`} name={key} value={value} />)}
-    <label>並び順<select name="sort" value={value} onChange={event => event.currentTarget.form?.requestSubmit()}><option value="newest">新しい順</option><option value="oldest">古い順</option><option value="price_asc">費用が低い順</option><option value="price_desc">費用が高い順</option></select></label>
+    <label title="並び順"><ArrowDownUp size={17} aria-hidden="true" /><span className={ui["sr-only"]}>並び順</span><select name="sort" value={value} onChange={event => event.currentTarget.form?.requestSubmit()}><option value="newest">新しい順</option><option value="oldest">古い順</option><option value="price_asc">費用が低い順</option><option value="price_desc">費用が高い順</option></select></label>
   </Form>;
 }

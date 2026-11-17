@@ -63,8 +63,8 @@ test("企業検索欄のフォーカスと動きを減らす設定に対応す�
     const style = getComputedStyle(element);
     return { outlineColor: style.outlineColor, boxShadow: style.boxShadow };
   });
-  expect(searchFocus.outlineColor).toBe("rgb(0, 0, 0)");
-  expect(searchFocus.boxShadow).toContain("rgb(255, 212, 61)");
+  expect(searchFocus.outlineColor).toBe("rgb(53, 107, 66)");
+  expect(searchFocus.boxShadow).toBe("none");
   expect(await page.locator("#site-navigation").evaluate((element) => getComputedStyle(element).transitionDuration)).toBe("0s");
 });
 

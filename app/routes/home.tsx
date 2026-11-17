@@ -1,4 +1,5 @@
 import ui from "../ui.module.css";
+import { ArrowRight, Building2 } from "lucide-react";
 import { Link } from "react-router";
 import { HomeFilters } from "../components/organisms/filters";
 import { CaseGrid } from "../components/organisms";
@@ -27,7 +28,7 @@ export default function HomeRoute({ loaderData }: Route.ComponentProps) {
         <h1>施工事例</h1>
       </header>
       <section className={ui["home-cases"]} aria-labelledby="home-cases-title">
-        <div className={ui["section-header"]}><h2 id="home-cases-title">新着</h2><Link to="/search">すべての事例を見る</Link></div>
+        <div className={ui["section-header"]}><h2 id="home-cases-title">新着</h2><Link to="/search" aria-label="すべての事例を見る">すべて見る<ArrowRight size={16} aria-hidden="true" /></Link></div>
         {loaderData.cases.length ? <CaseGrid items={loaderData.cases} /> : <p className={ui["home-notice"]} role={loaderData.loadError ? "alert" : undefined}>{loaderData.loadError ? "施工事例を読み込めませんでした。施工事例の一覧からもう一度お試しください。" : "施工事例はまだ公開されていません。掲載されると、ここから写真や費用を確認できます。"}</p>}
       </section>
       <section className={ui["home-search"]} aria-labelledby="home-search-title">
@@ -36,7 +37,7 @@ export default function HomeRoute({ loaderData }: Route.ComponentProps) {
       </section>
       <section className={ui["home-company-link"]}>
         <h2>施工会社から探す</h2>
-        <Link className={ui.button + " " + ui["button--secondary"]} to="/companies">施工会社を見る</Link>
+        <Link className={ui.button + " " + ui["button--secondary"]} to="/companies"><Building2 size={18} aria-hidden="true" />施工会社を見る</Link>
       </section>
     </div>
   </PublicLayout>;
