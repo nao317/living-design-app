@@ -1,7 +1,27 @@
 .actions { display: flex; align-items: center; gap: 12px; }
 .toggle { display: inline-grid; width: 44px; height: 44px; place-items: center; border: 1px solid var(--line); border-radius: 4px; background: transparent; color: var(--green-900); }
-.showcase { position: relative; isolation: isolate; }
-.edgeBlur { position: absolute; z-index: 1; inset-block: 6px 12px; width: clamp(32px, 8vw, 96px); pointer-events: none; }
+.showcase {
+  --edge-bleed: clamp(8px, 2vw, 24px);
+  --edge-fade: clamp(48px, 9vw, 120px);
+  --edge-mask: linear-gradient(to right,
+    transparent,
+    rgb(0 0 0 / 12%) calc(var(--edge-fade) / 4),
+    rgb(0 0 0 / 50%) calc(var(--edge-fade) / 2),
+    rgb(0 0 0 / 88%) calc(var(--edge-fade) * .75),
+    #000 var(--edge-fade),
+    #000 calc(100% - var(--edge-fade)),
+    rgb(0 0 0 / 88%) calc(100% - var(--edge-fade) * .75),
+    rgb(0 0 0 / 50%) calc(100% - var(--edge-fade) / 2),
+    rgb(0 0 0 / 12%) calc(100% - var(--edge-fade) / 4),
+    transparent);
+  position: relative;
+  isolation: isolate;
+  margin-inline: calc(-1 * var(--edge-bleed));
+  /* Fade the cards and blur together before their expanded clipping boundary. */
+  -webkit-mask-image: var(--edge-mask);
+  mask-image: var(--edge-mask);
+}
+.edgeBlur { position: absolute; z-index: 1; inset-block: 6px 12px; width: var(--edge-fade); pointer-events: none; }
 .left { left: 0; --blur-direction: to right; }
 .right { right: 0; --blur-direction: to left; }
 .edgeBlur > span {
@@ -14,15 +34,16 @@
   mask-image: linear-gradient(var(--blur-direction), #000 var(--fade-start), transparent var(--fade-end));
 }
 .showcase:has(:focus-visible) .edgeBlur { opacity: 0; }
-.viewport { --card-width: 280px; --card-gap: 22px; --play-state: running; position: relative; min-width: 0; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; padding: 6px 4px 12px; }
+.showcase:has(:focus-visible) { -webkit-mask-image: none; mask-image: none; }
+.viewport { --card-width: 280px; --card-gap: 22px; --play-state: running; position: relative; min-width: 0; max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain; padding: 6px calc(var(--edge-bleed) + 4px) 12px; }
 .viewport:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .track { display: flex; gap: var(--card-gap); align-items: stretch; }
 .item { flex: 0 0 var(--card-width); width: var(--card-width); min-width: 0; }
 .item > article { height: 100%; content-visibility: visible; contain-intrinsic-size: none; }
 
 @keyframes travel-left {
-  from { transform: translateX(calc(var(--loop-distance) - var(--card-width) - var(--card-gap))); }
-  to { transform: translateX(calc(-1 * (var(--card-width) + var(--card-gap)))); }
+  from { transform: translateX(calc(var(--loop-distance) - var(--card-width) - var(--card-gap) - var(--edge-bleed))); }
+  to { transform: translateX(calc(-1 * (var(--card-width) + var(--card-gap) + var(--edge-bleed)))); }
 }
 
 @media (prefers-reduced-motion: no-preference) {

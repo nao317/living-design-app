@@ -1588,7 +1588,7 @@ button[aria-busy="true"] { cursor: wait; }
 .case-gallery figure { min-width: 0; margin: 0; }
 .case-gallery figcaption { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; font-size: 14px; }
 .case-gallery figcaption span { color: var(--muted); }
-.photo-button { display: block; width: 100%; overflow: hidden; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-soft); padding: 0; }
+.photo-button { display: block; width: 100%; overflow: hidden; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-soft); padding: 0; }
 .photo-button:hover { box-shadow: var(--shadow); }
 .photo-button img { width: 100%; height: 260px; object-fit: cover; }
 .photo-dialog { width: min(1100px, calc(100% - 24px)); max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; border: 0; border-radius: 8px; background: #fff; padding: 16px; }
@@ -2001,7 +2001,7 @@ button[aria-busy="true"] { cursor: wait; }
   min-height: 380px;
   overflow: hidden;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #25392d;
   padding: 0;
   color: #fff;
@@ -2105,7 +2105,7 @@ button[aria-busy="true"] { cursor: wait; }
   .case-list-item__facts svg,
   .case-list-item__period svg { width: 13px; height: 13px; }
   .case-list-item__body .case-list-item__price { margin: 10px 0 6px; font-size: 15px; overflow-wrap: anywhere; }
-  .case-list-item__actions { top: 6px; right: 6px; }
+  .case-list-item__actions { display: none; }
   .case-card__body { padding: 20px; }
   .case-timeline li { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .case-timeline ol { padding-left: 20px; }

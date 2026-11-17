@@ -1,12 +1,12 @@
 import ui from "../../ui.module.css";
 import { ChevronLeft, ChevronRight, Images, Maximize2, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { StorageImage } from "./storage-image";
 
-export function CaseGallery({ images, paths = [], title, details = [] }: { images: string[]; paths?: string[]; title: string; details?: Array<{ date?: string; description?: string }> }) {
+export function CaseGallery({ images, paths = [], title, details = [], children }: { images: string[]; paths?: string[]; title: string; details?: Array<{ date?: string; description?: string }>; children?: ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [selected, setSelected] = useState(0);
-  if (!images.length) return <div className={ui["image-empty"]}>施工写真の掲載はありません</div>;
+  if (!images.length) return <><div className={ui["image-empty"]}>施工写真の掲載はありません</div>{children}</>;
   const timeline = images.map((src, index) => ({ src, index, ...details[index] })).slice(1)
     .sort((a, b) => (a.date ?? "9999-12-31").localeCompare(b.date ?? "9999-12-31") || a.index - b.index);
   function expand(index: number) { setSelected(index); dialog.current?.showModal(); }
@@ -15,6 +15,7 @@ export function CaseGallery({ images, paths = [], title, details = [] }: { image
       <StorageImage width={1200} height={780} src={images[0]} storagePath={paths[0]} bucket="case-images" alt={`${title}の施工写真1`} loading="eager" fetchPriority="high" />
     </button>
     <div className={ui["gallery-caption"]}><span><Images size={16} aria-hidden="true" /><span className={ui["sr-only"]}>施工写真 </span>{images.length}枚</span><button type="button" className={ui["gallery-expand"]} onClick={() => expand(0)} aria-label="メイン写真を拡大"><Maximize2 size={15} aria-hidden="true" />拡大</button></div>
+    {children}
     {timeline.length ? <section className={ui["case-timeline"]} aria-labelledby="case-timeline-heading">
       <h2 id="case-timeline-heading">施工の記録</h2>
       <ol>{timeline.map(({ src, index, date, description }) => <li key={paths[index] ?? `${src}-${index}`}>

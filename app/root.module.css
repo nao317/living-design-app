@@ -51,7 +51,7 @@
 }
 :global(button), :global(select) { cursor: pointer; }
 :global(a) { color: inherit; text-decoration: none; }
-:global(img) { display: block; max-width: 100%; border-radius: 8px; }
+:global(img) { display: block; max-width: 100%; border-radius: 10px; }
 :global(:is(a, button, input, select, textarea, summary):focus-visible) {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
