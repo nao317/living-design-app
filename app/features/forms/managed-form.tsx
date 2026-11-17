@@ -77,6 +77,6 @@ export function ManagedForm({ children, protect = false, onChange, onSubmit, ...
 export function SubmitButton({ children, pendingLabel = "保存中…", disabled, ...props }: ComponentProps<typeof Button> & { pendingLabel?: string }) {
   const pending = use(PendingContext);
   return <Button {...props} type="submit" aria-busy={pending || undefined} disabled={disabled || pending}>
-    {pending ? <span className={ui["spinner"]} aria-hidden="true" /> : null}<span aria-live="polite">{pending ? pendingLabel : children}</span>
+    {pending ? <span className={ui["spinner"]} aria-hidden="true" /> : null}<span className={ui["submit-label"]} aria-live="polite">{pending ? pendingLabel : children}</span>
   </Button>;
 }

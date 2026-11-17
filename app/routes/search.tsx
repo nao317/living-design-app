@@ -1,6 +1,7 @@
 import ui from "../ui.module.css";
 import type { Route } from "./+types/search";
 import { Pagination } from "../components/molecules";
+import { X } from "lucide-react";
 import { Link, useNavigation, useSearchParams } from "react-router";
 import { formatPriceRange } from "../features/cases/format";
 import { CaseList } from "../components/organisms";
@@ -84,11 +85,11 @@ export default function SearchRoute({ loaderData }: Route.ComponentProps) {
           <section className={ui["search-results"]} aria-labelledby="result-heading" aria-busy={navigation.state !== "idle"}>
             <div className={ui["search-results__header"]}>
               <h2 id="result-heading">検索結果</h2>
-              {loaderData.invalidPriceRange || loaderData.loadError ? null : <p role="status">{loaderData.total}件の施工事例が見つかりました</p>}
+              {loaderData.invalidPriceRange || loaderData.loadError ? null : <p role="status"><strong className={ui["result-count"]}>{loaderData.total}</strong>件<span className={ui["sr-only"]}>の施工事例が見つかりました</span></p>}
               {navigation.state !== "idle" ? <p role="status">検索中…</p> : null}
             </div>
             <SearchSort value={filters.sort} />
-            {conditions.length ? <div className={ui["active-filters"]} aria-label="適用中の検索条件">{conditions.map(condition => <Link className={ui["filter-chip"]} key={condition.keys[0]} to={without(condition.keys)} aria-label={`${condition.label}を解除`}>{condition.label}<span aria-hidden="true">×</span></Link>)}<Link to="/search">条件をクリア</Link></div> : null}
+            {conditions.length ? <div className={ui["active-filters"]} aria-label="適用中の検索条件">{conditions.map(condition => <Link className={ui["filter-chip"]} key={condition.keys[0]} to={without(condition.keys)} aria-label={`${condition.label}を解除`}>{condition.label}<X size={15} aria-hidden="true" /></Link>)}<Link to="/search">条件をクリア</Link></div> : null}
             {loaderData.loadError ? (
               <p className={ui["form-error"]} role="alert">検索結果を取得できませんでした。時間をおいて再度お試しください。</p>
             ) : loaderData.invalidPriceRange ? (

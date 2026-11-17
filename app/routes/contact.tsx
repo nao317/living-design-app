@@ -2,6 +2,7 @@ import ui from "../ui.module.css";
 import type { Route } from "./+types/contact";
 import { data, Link } from "react-router";
 import { useState } from "react";
+import { Send } from "lucide-react";
 import { z } from "zod";
 import { ManagedForm, SubmitButton } from "../features/forms/managed-form";
 import { validationErrors } from "../features/forms/validation";
@@ -127,40 +128,46 @@ export default function ContactRoute({ loaderData, actionData }: Route.Component
           ) : (
             <ManagedForm protect method="post" className={ui["contact-form"]}>
               {actionData?.error ? <p className={ui["form-error"]} role="alert">{actionData.error}</p> : null}
-              <Field label="お問い合わせ先企業">
-                <select name="companyId" value={selectedCompanyId} onChange={(event) => setSelection({ source: loaderData.selectedCompanyId, value: event.target.value })} required>
-                  <option value="">企業を選択してください</option>
-                  {loaderData.companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
-                </select>
-              </Field>
-              {selectedCase ? <div className={ui["contact-case"]}>
-                <input type="hidden" name="caseId" value={selectedCase.id} />
-                {selectedCase.image ? <StorageImage width={120} height={90} src={selectedCase.image} storagePath={selectedCase.imagePath} bucket="case-images" alt="" /> : null}
-                <div><span>この事例について相談</span><Link to={`/cases/${selectedCase.id}`}>{selectedCase.title}</Link><p>費用目安：{selectedCase.price}</p></div>
+              <fieldset className={ui["contact-group"]}><legend className={ui["sr-only"]}>相談先</legend>
+                <Field label="お問い合わせ先企業">
+                  <select name="companyId" value={selectedCompanyId} onChange={(event) => setSelection({ source: loaderData.selectedCompanyId, value: event.target.value })} required>
+                    <option value="">企業を選択してください</option>
+                    {loaderData.companies.map((company) => <option key={company.id} value={company.id}>{company.name}</option>)}
+                  </select>
+                </Field>
+                {selectedCase ? <div className={ui["contact-case"]}>
+                  <input type="hidden" name="caseId" value={selectedCase.id} />
+                  {selectedCase.image ? <StorageImage width={120} height={90} src={selectedCase.image} storagePath={selectedCase.imagePath} bucket="case-images" alt="" /> : null}
+                  <div><span>この事例について相談</span><Link to={`/cases/${selectedCase.id}`}>{selectedCase.title}</Link><p className={ui["contact-case__price"]}><span className={ui["sr-only"]}>費用目安：</span>{selectedCase.price}</p></div>
               </div> : null}
-              <Field label="お名前">
-                <input name="name" autoComplete="name" required maxLength={80} />
-              </Field>
-              <Field label="メールアドレス">
-                <input type="email" name="email" autoComplete="email" spellCheck={false} required />
-              </Field>
-              <Field label="お問い合わせ種別">
-                <select name="subject" defaultValue="renovation" required>
-                  <option value="renovation">リノベーション・施工について</option>
-                  <option value="company">掲載企業について</option>
-                  <option value="other">その他（選択した企業へのご相談）</option>
-                </select>
-              </Field>
-              <Field label="お問い合わせ内容" hint="直したい場所、現在困っていること、希望時期などをお書きください。まだ決まっていない項目は省略できます（10〜2,000文字）。">
-                <textarea name="message" required minLength={10} maxLength={2000} placeholder="例：キッチンの収納が足りず、改修を考えています。まずは工事の範囲や費用を相談したいです。" />
-              </Field>
-              <SubmitButton pendingLabel="送信中…">送信する</SubmitButton>
-              <p className={ui["form-hint"]}>送信内容は選択した企業へ共有され、入力したメールアドレス宛てに返信されます。</p>
+              </fieldset>
+              <fieldset className={ui["contact-group"]}><legend className={ui["sr-only"]}>返信先</legend>
+                <Field label="お名前">
+                  <input name="name" autoComplete="name" required maxLength={80} />
+                </Field>
+                <Field label="メールアドレス">
+                  <input type="email" name="email" autoComplete="email" spellCheck={false} required />
+                </Field>
+              </fieldset>
+              <fieldset className={ui["contact-group"]}><legend className={ui["sr-only"]}>相談内容</legend>
+                <Field label="お問い合わせ種別">
+                  <select name="subject" defaultValue="renovation" required>
+                    <option value="renovation">リノベーション・施工について</option>
+                    <option value="company">掲載企業について</option>
+                    <option value="other">その他（選択した企業へのご相談）</option>
+                  </select>
+                </Field>
+                <Field label="お問い合わせ内容" hint="直したい場所、現在困っていること、希望時期などをお書きください。まだ決まっていない項目は省略できます（10〜2,000文字）。">
+                  <textarea name="message" required minLength={10} maxLength={2000} placeholder="例：キッチンの収納が足りず、改修を考えています。まずは工事の範囲や費用を相談したいです。" />
+                </Field>
+              </fieldset>
+              <div className={ui["contact-submit"]}>
+                <SubmitButton pendingLabel="送信中…"><Send size={17} aria-hidden="true" />送信する</SubmitButton>
+                <p className={ui["form-hint"]}>送信内容は選択した企業へ共有され、入力したメールアドレス宛てに返信されます。</p>
+              </div>
             </ManagedForm>
           )}
         </section>
-
-
 
       </div>
     </PublicLayout>
