@@ -29,7 +29,7 @@ export function CaseMarquee({ items, children }: { items: CaseStudy[]; children?
     let frame = 0;
     let appliedWidth = 0;
     const observer = new ResizeObserver(([entry]) => {
-      const width = entry.contentRect.width;
+      const width = entry.borderBoxSize?.[0]?.inlineSize ?? element.clientWidth;
       if (!width || Math.abs(width - appliedWidth) < .5) return;
       appliedWidth = width;
       cancelAnimationFrame(frame);
