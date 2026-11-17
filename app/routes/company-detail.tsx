@@ -61,8 +61,10 @@ export default function CompanyDetailRoute({ loaderData }: Route.ComponentProps)
               <div><dt title="電話番号"><Phone size={18} aria-hidden="true" /><span className={ui["sr-only"]}>電話番号</span></dt><dd>{loaderData.company.phone ? <a href={`tel:${loaderData.company.phone.replace(/[^0-9+]/g, "")}`}>{loaderData.company.phone}</a> : "掲載なし"}</dd></div>
               <div><dt><CalendarDays size={18} aria-hidden="true" /><span>設立</span></dt><dd>{loaderData.company.founded || "掲載なし"}</dd></div>
             </dl>
-            {loaderData.company.website ? <a className={ui["button"] + " " + ui["button--secondary"]} href={loaderData.company.website}>ホームページ <ExternalLink aria-hidden="true" size={14} /></a> : null}
-            <Link className={ui["button"] + " " + ui["button--primary"]} to={"/contact?companyId=" + loaderData.company.id}><MessageSquare size={17} aria-hidden="true" />問い合わせる</Link>
+            <div className={ui["company-information-actions"]}>
+              {loaderData.company.website ? <a className={ui["button"] + " " + ui["button--secondary"]} href={loaderData.company.website}>ホームページ <ExternalLink aria-hidden="true" size={14} /></a> : null}
+              <Link className={ui["button"] + " " + ui["button--primary"]} to={"/contact?companyId=" + loaderData.company.id}><MessageSquare size={17} aria-hidden="true" />問い合わせ</Link>
+            </div>
           </section>
         </div>
       </article>

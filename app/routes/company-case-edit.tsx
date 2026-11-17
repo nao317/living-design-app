@@ -239,7 +239,7 @@ export default function CompanyCaseEditRoute({ loaderData, actionData }: Route.C
           ))}
           <label className={ui["case-photo-add"]}>
             <ImagePlus aria-hidden="true" /><span>写真を追加</span><span>1枚1MB以内・合計{MAX_CASE_IMAGES}枚まで</span>
-            <input type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple />
+            <input key={JSON.stringify(loaderData.caseImages.map(image => image.id))} type="file" name="images" accept="image/jpeg,image/png,image/webp" multiple />
           </label>
         </section>
         <section className={ui["form-card"]}>
