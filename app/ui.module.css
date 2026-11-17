@@ -1977,3 +1977,8 @@ button[aria-busy="true"] { cursor: wait; }
 .submit-label { display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
 .gallery-expand { display: inline-flex; min-height: 44px; align-items: center; gap: 6px; border: 0; background: transparent; padding: 0 8px; color: var(--muted); font: inherit; }
 .gallery-expand:hover { color: var(--green-900); text-decoration: underline; text-underline-offset: 4px; }
+
+/* Home: search, moving case studies, then companies. */
+.home-page > .home-search { border-top: 0; padding-top: 0; margin-bottom: var(--space-section); }
+.home-search h1 { margin: 0; font-family: var(--font-sans); font-size: clamp(26px, 3vw, 32px); font-weight: 600; line-height: 1.6; }
+.home-page > .home-cases { margin-bottom: 0; }
