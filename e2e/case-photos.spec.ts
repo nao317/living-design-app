@@ -52,7 +52,7 @@ for (const width of [1280, 390, 320]) {
     expect(heading!.y).toBeGreaterThan(image!.y);
     expect(heading!.y + heading!.height).toBeLessThanOrEqual(image!.y + image!.height);
     expect(await card.getByRole("heading").evaluate(node => getComputedStyle(node).textShadow)).not.toBe("none");
-    expect(await card.evaluate(node => getComputedStyle(node).borderRadius)).toBe("8px");
+    expect(await card.evaluate(node => getComputedStyle(node).borderRadius)).toBe("10px");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: `/tmp/case-list-${width}.png`, fullPage: true });
   });
@@ -69,6 +69,28 @@ test("ホームのショーケースでも画像を枠いっぱいに使う", as
   await page.screenshot({ path: "/tmp/home-showcase-desktop.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: "/tmp/home-showcase-mobile.png", fullPage: true });
+
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const viewport = page.getByLabel("施工事例を横にスクロール");
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(viewport).toHaveAttribute("data-ready", "true");
+    for (const progress of [.2, .8]) {
+      await viewport.evaluate(async (element, position) => {
+        // Freeze the real animation near the entry/exit boundaries for visual review.
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        const animations = element.getAnimations({ subtree: true });
+        const timing = animations[0]?.effect?.getTiming();
+        if (!timing || typeof timing.duration !== "number") throw new Error("ショーケースのアニメーションが見つかりません。");
+        const time = (timing.delay ?? 0) + timing.duration * position;
+        for (const animation of animations) {
+          animation.pause();
+          animation.currentTime = time;
+        }
+      }, progress);
+      await viewport.locator("..").screenshot({ path: `/tmp/home-showcase-boundary-${width}-${progress}.png` });
+    }
+  }
 });
 
 test("詳細の追加画像を日付順に説明とともに表示できる", async ({ page }) => {

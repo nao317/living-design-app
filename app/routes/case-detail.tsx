@@ -47,24 +47,25 @@ export default function CaseDetailRoute({ loaderData }: Route.ComponentProps) {
           <div>{item.categories.map((category) => <Tag key={category}>{category}</Tag>)}<h1>{item.title}</h1></div>
           <FavoriteButton caseId={item.id} />
         </div>
-        <CaseGallery images={gallery} paths={item.imagesPaths} title={item.title} details={item.photoDetails} />
-        <div className={ui["case-detail-layout"]}>
-          <section className={ui["case-detail-main"]}>
-            {item.summary ? <section className={ui["case-description"]}><h2>工事の内容</h2><p>{item.summary}</p></section> : null}
-            <dl className={ui["case-specs"]}>
-              <div><dt><Banknote size={17} aria-hidden="true" />費用<span className={ui["sr-only"]}>目安</span></dt><dd>{item.price}</dd></div>
-              <div><dt><Clock3 size={17} aria-hidden="true" />期間</dt><dd>{item.period || "要相談"}</dd></div>
-              <div><dt><MapPin size={17} aria-hidden="true" />地域</dt><dd>{item.area || "要相談"}</dd></div>
-            </dl>
-            <p className={ui["form-hint"]}>工事の範囲や住まいの状態によって費用は変わります。含まれる工事と見積もりは施工会社にご確認ください。</p>
-          </section>
-          <aside className={ui["case-company"]}>
-            <h2><Building2 aria-hidden="true" size={18} />{item.company}</h2>
-            {item.companyImage ? <StorageImage width={240} height={130} src={item.companyImage} storagePath={item.companyImagePath} bucket="company-assets" alt={item.company} /> : null}
-            <Link className={ui["button"] + " " + ui["button--secondary"]} to={"/companies/" + item.companyId}>企業情報を見る</Link>
-            <Link className={ui["button"] + " " + ui["button--primary"]} to={`/contact?companyId=${item.companyId}&caseId=${item.id}`} aria-label="この事例について相談する"><MessageSquare size={17} aria-hidden="true" />相談する</Link>
-          </aside>
-        </div>
+        <CaseGallery images={gallery} paths={item.imagesPaths} title={item.title} details={item.photoDetails}>
+          <div className={ui["case-detail-layout"]}>
+            <section className={ui["case-detail-main"]}>
+              {item.summary ? <section className={ui["case-description"]}><h2>工事の内容</h2><p>{item.summary}</p></section> : null}
+              <dl className={ui["case-specs"]}>
+                <div><dt><Banknote size={17} aria-hidden="true" />費用<span className={ui["sr-only"]}>目安</span></dt><dd>{item.price}</dd></div>
+                <div><dt><Clock3 size={17} aria-hidden="true" />期間</dt><dd>{item.period || "要相談"}</dd></div>
+                <div><dt><MapPin size={17} aria-hidden="true" />地域</dt><dd>{item.area || "要相談"}</dd></div>
+              </dl>
+              <p className={ui["form-hint"]}>工事の範囲や住まいの状態によって費用は変わります。含まれる工事と見積もりは施工会社にご確認ください。</p>
+            </section>
+            <aside className={ui["case-company"]}>
+              <h2><Building2 aria-hidden="true" size={18} />{item.company}</h2>
+              {item.companyImage ? <StorageImage width={240} height={130} src={item.companyImage} storagePath={item.companyImagePath} bucket="company-assets" alt={item.company} /> : null}
+              <Link className={ui["button"] + " " + ui["button--secondary"]} to={"/companies/" + item.companyId}>企業情報を見る</Link>
+              <Link className={ui["button"] + " " + ui["button--primary"]} to={`/contact?companyId=${item.companyId}&caseId=${item.id}`} aria-label="この事例について相談する"><MessageSquare size={17} aria-hidden="true" />相談する</Link>
+            </aside>
+          </div>
+        </CaseGallery>
       </article>
     </PublicLayout>
   );
