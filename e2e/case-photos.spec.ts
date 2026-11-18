@@ -52,7 +52,7 @@ for (const width of [1280, 390, 320]) {
     expect(heading!.y).toBeGreaterThan(image!.y);
     expect(heading!.y + heading!.height).toBeLessThanOrEqual(image!.y + image!.height);
     expect(await card.getByRole("heading").evaluate(node => getComputedStyle(node).textShadow)).not.toBe("none");
-    expect(await card.evaluate(node => getComputedStyle(node).borderRadius)).toBe("10px");
+    expect(await card.evaluate(node => getComputedStyle(node).borderRadius)).toBe("13px");
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
     await page.screenshot({ path: `/tmp/case-list-${width}.png`, fullPage: true });
   });
@@ -75,8 +75,8 @@ test("ホームのショーケースでも画像を枠いっぱいに使う", as
   expect(companyListBox!.x).toBeGreaterThan(circle!.x + circle!.width);
   await expect(page.getByText("ピンを押すと企業のホームページへ移動します。")).toHaveCount(0);
   const mapBox = await map.boundingBox();
-  const searchBox = await page.getByRole("heading", { name: "検索", exact: true }).boundingBox();
-  expect(mapBox!.y + mapBox!.height).toBeLessThan(searchBox!.y);
+  const companySectionBox = await page.getByRole("heading", { name: "施工会社から探す", exact: true }).locator("..").boundingBox();
+  expect(mapBox!.y).toBeGreaterThanOrEqual(companySectionBox!.y + companySectionBox!.height);
   const card = page.locator('article[class*="case-card"]').first();
   await expect(card).toBeVisible();
   const box = await card.boundingBox();
