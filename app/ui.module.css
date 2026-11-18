@@ -1588,9 +1588,10 @@ button[aria-busy="true"] { cursor: wait; }
 .case-gallery figure { min-width: 0; margin: 0; }
 .case-gallery figcaption { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; font-size: 14px; }
 .case-gallery figcaption span { color: var(--muted); }
-.photo-button { display: block; width: 100%; overflow: hidden; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-soft); padding: 0; }
+.photo-button { position: relative; display: block; width: 100%; overflow: hidden; border: 0; border-radius: var(--image-radius); background: var(--surface-soft); padding: 0; }
+.photo-button::after { content: ""; position: absolute; inset: 0; border: 1px solid var(--line); border-radius: inherit; pointer-events: none; }
 .photo-button:hover { box-shadow: var(--shadow); }
-.photo-button img { width: 100%; height: 260px; object-fit: cover; }
+.photo-button img { width: 100%; height: 260px; border-radius: inherit; object-fit: cover; }
 .photo-dialog { width: min(1100px, calc(100% - 24px)); max-height: 92dvh; overflow-y: auto; overscroll-behavior: contain; border: 0; border-radius: 8px; background: #fff; padding: 16px; }
 .photo-dialog::backdrop { background: rgb(0 0 0 / 75%); }
 .photo-dialog > img { width: 100%; max-height: 72dvh; object-fit: contain; }
@@ -2001,7 +2002,7 @@ button[aria-busy="true"] { cursor: wait; }
   min-height: 380px;
   overflow: hidden;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--image-radius);
   background: #25392d;
   padding: 0;
   color: #fff;
@@ -2014,6 +2015,7 @@ button[aria-busy="true"] { cursor: wait; }
   z-index: -1;
   inset: 0;
   pointer-events: none;
+  border-radius: inherit;
   background: linear-gradient(180deg, rgb(0 0 0 / 0%) 15%, rgb(0 0 0 / 22%) 42%, rgb(0 0 0 / 78%) 100%);
 }
 .case-card__image,

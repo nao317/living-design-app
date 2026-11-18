@@ -20,8 +20,8 @@ export async function clientLoader({ serverLoader }: Route.ClientLoaderArgs) {
 clientLoader.hydrate = true as const;
 export function HydrateFallback() {
   return <PublicLayout><div className={ui["public-page"] + " " + ui["home-page"]}>
-    <PartnerMap />
     <LoadingIndicator label="施工事例を読み込んでいます…" />
+    <PartnerMap />
   </div></PublicLayout>;
 }
 export function meta() {
@@ -30,7 +30,6 @@ export function meta() {
 export default function HomeRoute({ loaderData }: Route.ComponentProps) {
   return <PublicLayout>
     <div className={ui["public-page"] + " " + ui["home-page"]}>
-      <PartnerMap />
       <section className={ui["home-search"]} aria-labelledby="home-search-title">
         <h1 id="home-search-title">検索</h1>
         <HomeFilters categories={loaderData.categories} styles={loaderData.styles} />
@@ -42,6 +41,7 @@ export default function HomeRoute({ loaderData }: Route.ComponentProps) {
         <h2>施工会社から探す</h2>
         <Link className={ui.button + " " + ui["button--secondary"]} to="/companies"><Building2 size={18} aria-hidden="true" />施工会社を見る</Link>
       </section>
+      <PartnerMap />
     </div>
   </PublicLayout>;
 }
