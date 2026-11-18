@@ -8,6 +8,7 @@
   --space-field: 18px;
   --space-group: clamp(28px, 4vw, 40px);
   --space-section: clamp(44px, 6vw, 72px);
+  --image-radius: 13px;
   --green-950: #173a23;
   --green-900: #1f462b;
   --green-700: #356b42;
@@ -51,7 +52,7 @@
 }
 :global(button), :global(select) { cursor: pointer; }
 :global(a) { color: inherit; text-decoration: none; }
-:global(img) { display: block; max-width: 100%; border-radius: 10px; }
+:global(img) { display: block; max-width: 100%; border-radius: var(--image-radius); }
 :global(:is(a, button, input, select, textarea, summary):focus-visible) {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
